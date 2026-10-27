@@ -521,7 +521,8 @@ function rangeDays(a,b,t){
 
 function openSettings(){
   const y=cur.getFullYear();
-  const m=modal(`<h3>Impostazioni <span class="msg" style="font-family:var(--f-body);font-size:.72rem;font-weight:400">versione 27/10 23:25</span></h3>
+  const m=modal(`<h3>Impostazioni <span class="msg" style="font-family:var(--f-body);font-size:.72rem;font-weight:400">versione 27/10 23:32</span></h3>
+    <label class="f">Tema<select id="sTema"><option value="sistema">Come il sistema</option><option value="chiaro">Chiaro</option><option value="scuro">Scuro</option></select></label>
     <div class="fields"><label class="f">Ferie annue (gg)<input type="number" id="sFer" value="${settings.ferie}"></label><label class="f">Primo anno di utilizzo dell'app<input type="number" id="sStart" value="${startYear()}"></label><label class="f">Ferie dell'anno prima ancora da godere a inizio di quell'anno<input type="number" id="sAp" value="${settings.apFerie?.[startYear()]||0}"></label></div>
     <div class="fields"><label class="f">L.937 (gg)<input type="number" id="s937" value="${settings.f937}"></label><label class="f">Art. 25 (ore)<input type="number" id="sA25" value="${settings.a25}"></label><label class="f">Art. 23 (ore)<input type="number" id="sA23" value="${settings.a23}"></label></div>
     <div class="fields"><label class="f">Ore per giornata intera<input id="sGo" ${HMATTR} value="${fmtHM(settings.giornoOre)}"></label><label class="f">104 al mese (gg)<input type="number" id="s104" value="${settings.l104}"></label><label class="f">SW a settimana<input type="number" id="sSw" value="${settings.sw}"></label></div>
@@ -538,11 +539,12 @@ function openSettings(){
   m.querySelector("#sRestore").onclick=()=>$("fileIn").click();
   { const a=accordoDi(todayIso); m.querySelector("#sAccInfo").textContent = a ? `In vigore: ${giorniTxt(a.giorni)} · ${a.al?"scade il "+fmt(a.al):"a tempo indeterminato"}` : "Nessun accordo in vigore"; }
   m.querySelector("#sAcc").onclick=openAccordi;
+  m.querySelector("#sTema").value=getTema(); m.querySelector("#sTema").onchange=e=>applyTema(e.target.value);
   m.querySelector("#sSave").onclick=async()=>{
     const g=id=>+m.querySelector(id).value;
     const ns={...settings, ferie:g("#sFer"), f937:g("#s937"), a25:g("#sA25"), a23:g("#sA23"), giornoOre:parseHM(m.querySelector("#sGo").value)||6, l104:g("#s104"), sw:g("#sSw"), rcIniziale:(parseHM(m.querySelector("#sRc").value)||0),
       patrono:m.querySelector("#sPat").value, patronoData:m.querySelector("#sPd").value.trim()||"09-07", annoInizio:g("#sStart"), apFerie:{...(settings.apFerie||{}), [g("#sStart")]:g("#sAp")}};
-    await store.saveSettings(ns); close(); toast("Impostazioni salvate");
+    setTema(m.querySelector("#sTema").value); await store.saveSettings(ns); close(); toast("Impostazioni salvate");
   };
 }
 
@@ -802,6 +804,12 @@ $("bNew").onclick=()=>openForm(todayIso);
 $("bRic").onclick=openRic;
 $("bSettings").onclick=openSettings;
 $("bExport").onclick=openExport;
+// ---------- tema (scelta salvata su questo dispositivo) ----------
+function getTema(){ try{ return localStorage.getItem("cl-tema")||"sistema"; }catch(_){ return "sistema"; } }
+function applyTema(t){ const r=document.documentElement; if(t==="chiaro") r.setAttribute("data-theme","light"); else if(t==="scuro") r.setAttribute("data-theme","dark"); else r.removeAttribute("data-theme"); }
+function setTema(t){ try{ localStorage.setItem("cl-tema",t); }catch(_){} applyTema(t); }
+if(getTema()!=="sistema") applyTema(getTema());
+
 // ---------- accordi di smart working ----------
 const GN=[[1,"Lun"],[2,"Mar"],[3,"Mer"],[4,"Gio"],[5,"Ven"]];
 const giorniTxt = g => GN.filter(([n])=>g.includes(n)).map(x=>x[1]).join(", ") || "nessun giorno";
