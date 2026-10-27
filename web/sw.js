@@ -7,3 +7,4 @@ self.addEventListener("fetch", e => {
   e.respondWith(fetch(e.request).then(r => { const copy = r.clone(); caches.open(CACHE).then(c => c.put(e.request, copy)); return r; })
     .catch(() => caches.match(e.request).then(m => m || caches.match("./index.html"))));
 });
+// v1
