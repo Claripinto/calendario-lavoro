@@ -577,16 +577,18 @@ async function exportFile(kind){
   const filename = `calendario-lavoro-${todayIso}.${kind}`;
   // App Android: salva il file vero in Documenti e apre "Condividi"
   const Cap=window.Capacitor;
-  if(Cap && Cap.isNativePlatform && Cap.isNativePlatform() && Cap.Plugins && Cap.Plugins.Filesystem){
+  const native = !!(Cap && Cap.isNativePlatform && Cap.isNativePlatform());
+  if(native && !(Cap.Plugins && Cap.Plugins.Filesystem)){ toast("Per salvare i file installa l'ultimo APK"); }
+  if(native && Cap.Plugins && Cap.Plugins.Filesystem){
     const {Filesystem, Share}=Cap.Plugins; let saved=false;
     try{ await Filesystem.writeFile({path:"CalendarioLavoro/"+filename, data, directory:"DOCUMENTS", encoding:"utf8", recursive:true}); saved=true; }catch(_){}
     try{ const r=await Filesystem.writeFile({path:filename, data, directory:"CACHE", encoding:"utf8"});
       if(saved) toast("Salvato in Documenti/CalendarioLavoro");
       if(Share) await Share.share({title:filename, text:filename, files:[r.uri], dialogTitle:"Salva o invia il file"}).catch(()=>{});
-      return; }catch(_){ if(saved){ toast("Salvato in Documenti/CalendarioLavoro"); return; } }
+      return; }catch(err){ if(saved){ toast("Salvato in Documenti/CalendarioLavoro"); return; } toast("Salvataggio non riuscito: "+((err&&err.message)||"errore")); }
   }
   // Browser normale (sito dell'app): download diretto
-  if(location.protocol==="https:" && !/claude\.ai|claudeusercontent|anthropic/.test(location.hostname)){
+  if(!native && location.protocol==="https:" && !/claude\.ai|claudeusercontent|anthropic/.test(location.hostname)){
     try{ const url=URL.createObjectURL(new Blob([data],{type:kind==="json"?"application/json":kind==="csv"?"text/csv":"text/calendar"}));
       const a=document.createElement("a"); a.href=url; a.download=filename; document.body.append(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),4000); toast("File scaricato"); return; }catch(_){}
   }
