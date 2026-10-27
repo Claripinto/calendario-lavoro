@@ -45,9 +45,13 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug
           cp app/build/outputs/apk/debug/app-debug.apk ../CalendarioLavoro.apk
+          BT=$(ls -d $ANDROID_HOME/build-tools/* | sort -V | tail -1)
+          { echo "--- verifica"; $BT/apksigner verify --print-certs ../CalendarioLavoro.apk | grep -E 'SHA-256|DN'; $BT/aapt dump badging ../CalendarioLavoro.apk | grep -E "^package|sdkVersion|targetSdk"; } > ../verifica.txt 2>&1 || true
+          cat ../verifica.txt
       - name: Pubblica nella pagina Release (link diretto, senza zip)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete apk --yes --cleanup-tag || true
-          gh release create apk CalendarioLavoro.apk --title "Calendario Lavoro (APK)" --notes "Installa questo file sul telefono. L'app poi si aggiorna da sola. build: ${{ github.run_number }}"
+          { echo "Installa questo file sul telefono. L'app poi si aggiorna da sola. build: ${{ github.run_number }}"; cat verifica.txt; } > note.txt
+          gh release create apk CalendarioLavoro.apk --title "Calendario Lavoro (APK)" --notes-file note.txt
