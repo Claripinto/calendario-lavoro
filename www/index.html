@@ -89,7 +89,8 @@ h1{font-family:var(--f-display);font-size:1.6rem;margin:0;letter-spacing:-.01em;
 .tool.on{border-color:var(--fg);box-shadow:0 0 0 2px var(--surface) inset;transform:translateY(-2px)}
 .tool.del{background:var(--surface);color:var(--fest);border-color:var(--fest);text-shadow:none}
 .tool.del.on{background:var(--fest);color:#fff}
-.days{touch-action:pan-y;will-change:transform}
+.days{touch-action:pan-y;will-change:transform;transform-origin:50% 50%;backface-visibility:hidden}
+section.panel:has(> .days){perspective:1100px}
 .days.painting{touch-action:none;user-select:none;-webkit-user-select:none}
 .day.sel{box-shadow:inset 0 0 0 3px var(--accent)!important}
 .band{flex:1 1 0;padding:4px 6px;display:flex;flex-direction:column;gap:3px;min-width:0;min-height:0}
@@ -856,14 +857,14 @@ let lastSwipe=0;
   box.addEventListener("touchstart",e=>{ if(mode==="pennello"&&tool) return; const t=e.touches[0]; x0=t.clientX; y0=t.clientY; dx=0; on=true; horiz=null; box.style.transition="none"; },{passive:true});
   box.addEventListener("touchmove",e=>{ if(!on) return; const t=e.touches[0]; dx=t.clientX-x0; const dy=t.clientY-y0;
     if(horiz===null && (Math.abs(dx)>8||Math.abs(dy)>8)) horiz=Math.abs(dx)>Math.abs(dy);
-    if(horiz){ box.style.transform=`translateX(${dx}px)`; box.style.opacity=String(1-Math.min(.5,Math.abs(dx)/box.offsetWidth)); } },{passive:true});
+    if(horiz){ const r=Math.max(-75,Math.min(75,dx/box.offsetWidth*80)); box.style.transform=`rotateY(${r}deg) scale(${1-Math.abs(r)/300})`; box.style.opacity=String(1-Math.abs(r)/150); } },{passive:true});
   const end=()=>{ if(!on) return; on=false; const w=box.offsetWidth;
     if(horiz && Math.abs(dx)>Math.min(80,w*.2)){ lastSwipe=Date.now(); const dir=dx<0?1:-1;
       if(reduce){ box.style.transform=""; box.style.opacity=""; cur.setMonth(cur.getMonth()+dir); render(); return; }
-      box.style.transition="transform .16s ease-in, opacity .16s"; box.style.transform=`translateX(${-dir*w}px)`; box.style.opacity="0";
-      setTimeout(()=>{ cur.setMonth(cur.getMonth()+dir); render(); box.style.transition="none"; box.style.transform=`translateX(${dir*w*.6}px)`;
-        requestAnimationFrame(()=>requestAnimationFrame(()=>{ box.style.transition="transform .2s ease-out, opacity .2s"; box.style.transform="translateX(0)"; box.style.opacity="1"; })); },160);
-    } else { if(horiz) lastSwipe=Date.now(); box.style.transition="transform .18s ease-out, opacity .18s"; box.style.transform="translateX(0)"; box.style.opacity="1"; } };
+      box.style.transition="transform .18s ease-in, opacity .18s"; box.style.transform=`rotateY(${-dir*90}deg) scale(.75)`; box.style.opacity="0";
+      setTimeout(()=>{ cur.setMonth(cur.getMonth()+dir); render(); box.style.transition="none"; box.style.transform=`rotateY(${dir*90}deg) scale(.75)`;
+        requestAnimationFrame(()=>requestAnimationFrame(()=>{ box.style.transition="transform .28s cubic-bezier(.2,.8,.3,1), opacity .22s"; box.style.transform="rotateY(0deg) scale(1)"; box.style.opacity="1"; })); },180);
+    } else { if(horiz) lastSwipe=Date.now(); box.style.transition="transform .22s ease-out, opacity .22s"; box.style.transform="rotateY(0deg) scale(1)"; box.style.opacity="1"; } };
   box.addEventListener("touchend",end); box.addEventListener("touchcancel",end);
 })();
 
