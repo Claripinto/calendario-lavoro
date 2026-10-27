@@ -574,6 +574,21 @@ function buildCsv(){
 async function exportFile(kind){
   const data = kind==="ics"?buildIcs(): kind==="csv"?buildCsv(): JSON.stringify({app:"calendario-lavoro",version:1,exported:new Date().toISOString(),settings,events},null,2);
   const filename = `calendario-lavoro-${todayIso}.${kind}`;
+  // App Android: salva il file vero in Documenti e apre "Condividi"
+  const Cap=window.Capacitor;
+  if(Cap && Cap.isNativePlatform && Cap.isNativePlatform() && Cap.Plugins && Cap.Plugins.Filesystem){
+    const {Filesystem, Share}=Cap.Plugins; let saved=false;
+    try{ await Filesystem.writeFile({path:"CalendarioLavoro/"+filename, data, directory:"DOCUMENTS", encoding:"utf8", recursive:true}); saved=true; }catch(_){}
+    try{ const r=await Filesystem.writeFile({path:filename, data, directory:"CACHE", encoding:"utf8"});
+      if(saved) toast("Salvato in Documenti/CalendarioLavoro");
+      if(Share) await Share.share({title:filename, text:filename, files:[r.uri], dialogTitle:"Salva o invia il file"}).catch(()=>{});
+      return; }catch(_){ if(saved){ toast("Salvato in Documenti/CalendarioLavoro"); return; } }
+  }
+  // Browser normale (sito dell'app): download diretto
+  if(location.protocol==="https:" && !/claude\.ai|claudeusercontent|anthropic/.test(location.hostname)){
+    try{ const url=URL.createObjectURL(new Blob([data],{type:kind==="json"?"application/json":kind==="csv"?"text/csv":"text/calendar"}));
+      const a=document.createElement("a"); a.href=url; a.download=filename; document.body.append(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),4000); toast("File scaricato"); return; }catch(_){}
+  }
   try{ const dl=await claude.use("downloads"); if(dl){ await dl.save({filename,data}); return; } }catch(e){ if(e&&e.code==="declined"||e?.code==="cancelled") return; }
   const m=modal(`<h3>${esc(filename)}</h3><p class="msg">Il download diretto non è disponibile qui: copia il testo e salvalo in un file con questo nome.</p><textarea id="cpT" readonly></textarea><div class="row" style="justify-content:flex-end"><button class="btn" id="cpC">Copia</button><button class="btn primary" id="cpX">Chiudi</button></div>`);
   const ta=m.querySelector("#cpT"); ta.value=data; m.querySelector("#cpX").onclick=close;
