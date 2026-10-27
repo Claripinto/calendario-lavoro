@@ -521,7 +521,8 @@ function rangeDays(a,b,t){
 
 function openSettings(){
   const y=cur.getFullYear();
-  const m=modal(`<h3>Impostazioni <span class="msg" style="font-family:var(--f-body);font-size:.72rem;font-weight:400">versione 27/10 23:32</span></h3>
+  const m=modal(`<h3>Impostazioni <span class="msg" style="font-family:var(--f-body);font-size:.72rem;font-weight:400">${APP_VER.startsWith("__")?"":"versione "+APP_VER}</span></h3>
+    <div class="row" style="justify-content:space-between;border:1px solid var(--line);border-radius:6px;padding:8px 10px" ${UPD_OK?"":"hidden"}><span class="msg" id="sUpdInfo">Aggiornamenti dell'app</span><button class="btn" type="button" id="sUpd">Controlla aggiornamenti</button></div>
     <label class="f">Tema<select id="sTema"><option value="sistema">Come il sistema</option><option value="chiaro">Chiaro</option><option value="scuro">Scuro</option></select></label>
     <div class="fields"><label class="f">Ferie annue (gg)<input type="number" id="sFer" value="${settings.ferie}"></label><label class="f">Primo anno di utilizzo dell'app<input type="number" id="sStart" value="${startYear()}"></label><label class="f">Ferie dell'anno prima ancora da godere a inizio di quell'anno<input type="number" id="sAp" value="${settings.apFerie?.[startYear()]||0}"></label></div>
     <div class="fields"><label class="f">L.937 (gg)<input type="number" id="s937" value="${settings.f937}"></label><label class="f">Art. 25 (ore)<input type="number" id="sA25" value="${settings.a25}"></label><label class="f">Art. 23 (ore)<input type="number" id="sA23" value="${settings.a23}"></label></div>
@@ -539,6 +540,7 @@ function openSettings(){
   m.querySelector("#sRestore").onclick=()=>$("fileIn").click();
   { const a=accordoDi(todayIso); m.querySelector("#sAccInfo").textContent = a ? `In vigore: ${giorniTxt(a.giorni)} · ${a.al?"scade il "+fmt(a.al):"a tempo indeterminato"}` : "Nessun accordo in vigore"; }
   m.querySelector("#sAcc").onclick=openAccordi;
+  m.querySelector("#sUpd").onclick=()=>checkUpdates(true, m.querySelector("#sUpdInfo"));
   m.querySelector("#sTema").value=getTema(); m.querySelector("#sTema").onchange=e=>applyTema(e.target.value);
   m.querySelector("#sSave").onclick=async()=>{
     const g=id=>+m.querySelector(id).value;
@@ -804,6 +806,40 @@ $("bNew").onclick=()=>openForm(todayIso);
 $("bRic").onclick=openRic;
 $("bSettings").onclick=openSettings;
 $("bExport").onclick=openExport;
+// ---------- aggiornamenti ----------
+const APP_VER="27/10 23:33";
+const SITE="https://claripinto.github.io/calendario-lavoro/";
+const APK_URL="https://github.com/Claripinto/calendario-lavoro/releases/latest/download/CalendarioLavoro.apk";
+const isNative=()=>!!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform());
+const UPD_OK = !APP_VER.startsWith("__") && (isNative() || location.hostname.endsWith("github.io"));
+function askUpdate(text, okLabel, onOk){
+  const m=modal(`<h3>Aggiornamento disponibile</h3><p>${text}</p><div class="row" style="justify-content:flex-end"><button class="btn" id="uNo">Più tardi</button><button class="btn primary" id="uOk">${okLabel}</button></div>`);
+  m.querySelector("#uNo").onclick=close; m.querySelector("#uOk").onclick=()=>{ close(); onOk(); };
+}
+async function reloadFresh(){
+  try{ if(navigator.serviceWorker) for(const r of await navigator.serviceWorker.getRegistrations()) await r.update(); }catch(_){}
+  try{ for(const k of await caches.keys()) await caches.delete(k); }catch(_){}
+  location.replace(SITE+"?v="+Date.now());
+}
+async function checkUpdates(manual, info){
+  const say=t=>{ if(info) info.textContent=t; };
+  if(!UPD_OK){ return; } say("Controllo in corso…");
+  try{
+    // 1. nuova versione dell'app (si aggiorna senza reinstallare)
+    const v=await (await fetch(SITE+"version.json?t="+Date.now(),{cache:"no-store"})).json();
+    if(v.web && v.web!==APP_VER){ say("Nuova versione "+v.web); askUpdate(`È disponibile la versione <b>${esc(v.web)}</b> (tu hai la ${esc(APP_VER)}). Si aggiorna in un attimo, i dati restano.`,"Aggiorna ora",reloadFresh); return; }
+    // 2. nuovo APK (solo quando cambia la parte Android)
+    if(isNative() && Capacitor.Plugins.App){
+      const inst=+(await Capacitor.Plugins.App.getInfo()).build||0;
+      const rel=await (await fetch("https://api.github.com/repos/Claripinto/calendario-lavoro/releases/latest",{cache:"no-store"})).json();
+      const m=/build:\s*(\d+)/.exec(rel.body||""); const last=m?+m[1]:0;
+      if(last>inst){ say("Nuovo APK disponibile"); askUpdate("È disponibile un nuovo <b>APK</b>: va scaricato e installato sopra quello attuale. I dati restano.","Scarica APK",()=>{ const B=Capacitor.Plugins.Browser; if(B) B.open({url:APK_URL}); else location.href=APK_URL; }); return; }
+    }
+    say("Hai già l'ultima versione ("+APP_VER+")"); if(manual) toast("Nessun aggiornamento: hai l'ultima versione");
+  }catch(e){ say("Controllo non riuscito: serve internet"); if(manual) toast("Controllo non riuscito: serve internet"); }
+}
+if(UPD_OK) setTimeout(()=>checkUpdates(false), 4000);
+
 // ---------- tema (scelta salvata su questo dispositivo) ----------
 function getTema(){ try{ return localStorage.getItem("cl-tema")||"sistema"; }catch(_){ return "sistema"; } }
 function applyTema(t){ const r=document.documentElement; if(t==="chiaro") r.setAttribute("data-theme","light"); else if(t==="scuro") r.setAttribute("data-theme","dark"); else r.removeAttribute("data-theme"); }

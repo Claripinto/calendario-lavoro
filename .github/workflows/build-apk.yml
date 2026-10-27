@@ -36,6 +36,8 @@ jobs:
           npx cap add android
           npx @capacitor/assets generate --android --iconBackgroundColor '#1d5a86' --splashBackgroundColor '#f3f5f7'
           npx cap sync android
+          sed -i "s/versionCode 1$/versionCode ${{ github.run_number }}/; s/versionName \"1.0\"/versionName \"1.${{ github.run_number }}\"/" android/app/build.gradle
+          grep -E 'versionCode|versionName' android/app/build.gradle
       - name: Compila
         run: |
           cd android
@@ -47,4 +49,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release delete apk --yes --cleanup-tag || true
-          gh release create apk CalendarioLavoro.apk --title "Calendario Lavoro (APK)" --notes "Installa questo file sul telefono. L'app poi si aggiorna da sola."
+          gh release create apk CalendarioLavoro.apk --title "Calendario Lavoro (APK)" --notes "Installa questo file sul telefono. L'app poi si aggiorna da sola. build: ${{ github.run_number }}"
