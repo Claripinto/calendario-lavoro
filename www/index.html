@@ -89,6 +89,7 @@ h1{font-family:var(--f-display);font-size:1.6rem;margin:0;letter-spacing:-.01em;
 .tool.on{border-color:var(--fg);box-shadow:0 0 0 2px var(--surface) inset;transform:translateY(-2px)}
 .tool.del{background:var(--surface);color:var(--fest);border-color:var(--fest);text-shadow:none}
 .tool.del.on{background:var(--fest);color:#fff}
+.days{touch-action:pan-y;will-change:transform}
 .days.painting{touch-action:none;user-select:none;-webkit-user-select:none}
 .day.sel{box-shadow:inset 0 0 0 3px var(--accent)!important}
 .band{flex:1 1 0;padding:4px 6px;display:flex;flex-direction:column;gap:3px;min-width:0;min-height:0}
@@ -663,6 +664,7 @@ async function applyTool(s,ops){
 function pushUndo(ops){ if(ops.length){ undoStack.push(ops); if(undoStack.length>30) undoStack.shift(); renderPalette(); } }
 async function undo(){ const ops=undoStack.pop(); if(!ops) return; for(const o of ops.reverse()){ if(o.add) await store.del(o.add); else if(o.del) await store.save(o.del); } toast("Operazione annullata"); renderPalette(); }
 async function dayTap(s,fromKey){
+  if(Date.now()-lastSwipe<400) return;
   if(mode==="pennello"){ if(!tool){ toast("Scegli prima una voce"); return; } if(fromKey){ const ops=[]; await applyTool(s,ops); pushUndo(ops); } return; }
   if(mode==="intervallo"){ if(!rangeStart){ rangeStart=s; renderPalette(); render(); return; } const a=rangeStart; rangeStart=null; renderPalette(); render(); openRange(a<s?a:s, a<s?s:a); return; }
   openDay(s);
@@ -843,6 +845,25 @@ function editAccordo(a){
     list.push({id:a.id||("acc"+Date.now().toString(36)), dal, al, giorni:g, note:q("#aN").value.trim()});
     await saveAccordi(list); toast(nuovo?"Accordo salvato":"Accordo modificato"); openAccordi(); };
 }
+
+// ---------- scorrimento col dito tra i mesi ----------
+let lastSwipe=0;
+(function(){
+  const box=$("days"); let x0=0,y0=0,dx=0,on=false,horiz=null;
+  const reduce=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
+  box.addEventListener("touchstart",e=>{ if(mode==="pennello"&&tool) return; const t=e.touches[0]; x0=t.clientX; y0=t.clientY; dx=0; on=true; horiz=null; box.style.transition="none"; },{passive:true});
+  box.addEventListener("touchmove",e=>{ if(!on) return; const t=e.touches[0]; dx=t.clientX-x0; const dy=t.clientY-y0;
+    if(horiz===null && (Math.abs(dx)>8||Math.abs(dy)>8)) horiz=Math.abs(dx)>Math.abs(dy);
+    if(horiz){ box.style.transform=`translateX(${dx}px)`; box.style.opacity=String(1-Math.min(.5,Math.abs(dx)/box.offsetWidth)); } },{passive:true});
+  const end=()=>{ if(!on) return; on=false; const w=box.offsetWidth;
+    if(horiz && Math.abs(dx)>Math.min(80,w*.2)){ lastSwipe=Date.now(); const dir=dx<0?1:-1;
+      if(reduce){ box.style.transform=""; box.style.opacity=""; cur.setMonth(cur.getMonth()+dir); render(); return; }
+      box.style.transition="transform .16s ease-in, opacity .16s"; box.style.transform=`translateX(${-dir*w}px)`; box.style.opacity="0";
+      setTimeout(()=>{ cur.setMonth(cur.getMonth()+dir); render(); box.style.transition="none"; box.style.transform=`translateX(${dir*w*.6}px)`;
+        requestAnimationFrame(()=>requestAnimationFrame(()=>{ box.style.transition="transform .2s ease-out, opacity .2s"; box.style.transform="translateX(0)"; box.style.opacity="1"; })); },160);
+    } else { if(horiz) lastSwipe=Date.now(); box.style.transition="transform .18s ease-out, opacity .18s"; box.style.transform="translateX(0)"; box.style.opacity="1"; } };
+  box.addEventListener("touchend",end); box.addEventListener("touchcancel",end);
+})();
 
 // ---------- vista anno ----------
 (function(){
