@@ -807,7 +807,7 @@ $("bRic").onclick=openRic;
 $("bSettings").onclick=openSettings;
 $("bExport").onclick=openExport;
 // ---------- aggiornamenti ----------
-const APP_VER="27/10 23:33";
+const APP_VER="27/10 23:35";
 const SITE="https://claripinto.github.io/calendario-lavoro/";
 const APK_URL="https://github.com/Claripinto/calendario-lavoro/releases/latest/download/CalendarioLavoro.apk";
 const isNative=()=>!!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform());
@@ -839,6 +839,9 @@ async function checkUpdates(manual, info){
   }catch(e){ say("Controllo non riuscito: serve internet"); if(manual) toast("Controllo non riuscito: serve internet"); }
 }
 if(UPD_OK) setTimeout(()=>checkUpdates(false), 4000);
+// anche quando si torna nell'app dopo averla lasciata in sottofondo (al massimo un controllo ogni 10 minuti)
+let lastCheck=Date.now();
+document.addEventListener("visibilitychange",()=>{ if(UPD_OK && document.visibilityState==="visible" && Date.now()-lastCheck>600000 && !document.querySelector(".modal")){ lastCheck=Date.now(); checkUpdates(false); } });
 
 // ---------- tema (scelta salvata su questo dispositivo) ----------
 function getTema(){ try{ return localStorage.getItem("cl-tema")||"sistema"; }catch(_){ return "sistema"; } }
