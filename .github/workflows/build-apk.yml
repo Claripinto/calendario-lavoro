@@ -27,8 +27,8 @@ jobs:
           KS: ${{ secrets.DEBUG_KEYSTORE_B64 }}
         run: |
           if [ -z "$KS" ]; then echo "::error::Manca il secret DEBUG_KEYSTORE_B64"; exit 1; fi
-          mkdir -p ~/.android
-          echo "$KS" | base64 -d > ~/.android/debug.keystore
+          echo "$KS" | base64 -d > "$GITHUB_WORKSPACE/firma.keystore"
+          keytool -list -v -keystore "$GITHUB_WORKSPACE/firma.keystore" -storepass android | grep SHA256
       - name: Dipendenze
         run: npm install
       - name: Progetto Android
@@ -38,6 +38,9 @@ jobs:
           npx cap sync android
           sed -i "s/versionCode 1$/versionCode ${{ github.run_number }}/; s/versionName \"1.0\"/versionName \"1.${{ github.run_number }}\"/" android/app/build.gradle
           grep -E 'versionCode|versionName' android/app/build.gradle
+          # firma sempre con la stessa chiave (quella dei Secrets), non con una chiave generata a caso
+          sed -i "0,/^android {/s//android {\n    signingConfigs { debug { storeFile file('$GITHUB_WORKSPACE\/firma.keystore'); storePassword 'android'; keyAlias 'androiddebugkey'; keyPassword 'android' } }/" android/app/build.gradle
+          grep -n -A1 'signingConfigs' android/app/build.gradle
           sed -i 's#</manifest>#    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>\n    <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>\n    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>\n</manifest>#' android/app/src/main/AndroidManifest.xml
       - name: Compila
         run: |
