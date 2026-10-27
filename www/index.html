@@ -102,11 +102,11 @@ section.panel:has(> .days){perspective:1100px}
 .num{font-family:var(--f-mono);font-size:.85rem;display:flex;justify-content:space-between;align-items:center;gap:4px}
 .day.fest .num,.day.we .num{color:var(--fest)}
 .day.today .num b{background:var(--today);color:var(--accent-fg);border-radius:4px;padding:0 5px}
-.fname{font-size:.66rem;color:var(--fest);line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fname{font-size:.66rem;color:var(--fest);line-height:1.15;overflow:hidden;white-space:normal;overflow-wrap:break-word;hyphens:auto}
 .chip{font-size:.7rem;font-weight:600;color:#fff;border-radius:4px;padding:1px 5px;line-height:1.2;overflow:hidden}
 .chip .cl{display:block;white-space:nowrap;overflow:hidden;text-overflow:clip}
 #ytab th:first-child,#ytab td:first-child,#simTab th:first-child,#simTab td:first-child{position:sticky;left:0;z-index:2;background:var(--surface);box-shadow:1px 0 0 var(--line)}
-@media (max-width:560px){.day{min-height:64px;padding:3px}.chip{font-size:.56rem;padding:0 2px;letter-spacing:-.02em}.fname{display:none}.cal-head h2{font-size:1.1rem;min-width:0}}
+@media (max-width:560px){.day{min-height:64px;padding:3px}.chip{font-size:.56rem;padding:0 2px;letter-spacing:-.02em}.fname{font-size:.56rem}.cal-head h2{font-size:1.1rem;min-width:0}}
 .legend{display:flex;flex-wrap:wrap;gap:6px 12px;padding:10px 14px;font-size:.76rem;color:var(--muted)}
 .legend span{display:inline-flex;align-items:center;gap:5px}
 .legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
@@ -853,7 +853,7 @@ function planNotifiche(){ if(!LN()) return; clearTimeout(planT); planT=setTimeou
 setTimeout(()=>{ if(LN()){ try{ Capacitor.Plugins.LocalNotifications.addListener("localNotificationActionPerformed", a=>{ const d=a&&a.notification&&a.notification.extra&&a.notification.extra.d; if(d){ cur=new Date(+d.slice(0,4),+d.slice(5,7)-1,1); render(); if(a.notification.id%10===0) setTimeout(()=>window.__ingresso(d),300); } }); }catch(_){} } },0);
 
 // ---------- aggiornamenti ----------
-const APP_VER="27/10 23:52";
+const APP_VER="28/10 00:21";
 const SITE="https://claripinto.github.io/calendario-lavoro/";
 const APK_URL="https://github.com/Claripinto/calendario-lavoro/releases/latest/download/CalendarioLavoro.apk";
 const isNative=()=>!!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform());
