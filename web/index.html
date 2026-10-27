@@ -521,7 +521,7 @@ function rangeDays(a,b,t){
 
 function openSettings(){
   const y=cur.getFullYear();
-  const m=modal(`<h3>Impostazioni</h3>
+  const m=modal(`<h3>Impostazioni <span class="msg" style="font-family:var(--f-body);font-size:.72rem;font-weight:400">versione 27/10 23:25</span></h3>
     <div class="fields"><label class="f">Ferie annue (gg)<input type="number" id="sFer" value="${settings.ferie}"></label><label class="f">Primo anno di utilizzo dell'app<input type="number" id="sStart" value="${startYear()}"></label><label class="f">Ferie dell'anno prima ancora da godere a inizio di quell'anno<input type="number" id="sAp" value="${settings.apFerie?.[startYear()]||0}"></label></div>
     <div class="fields"><label class="f">L.937 (gg)<input type="number" id="s937" value="${settings.f937}"></label><label class="f">Art. 25 (ore)<input type="number" id="sA25" value="${settings.a25}"></label><label class="f">Art. 23 (ore)<input type="number" id="sA23" value="${settings.a23}"></label></div>
     <div class="fields"><label class="f">Ore per giornata intera<input id="sGo" ${HMATTR} value="${fmtHM(settings.giornoOre)}"></label><label class="f">104 al mese (gg)<input type="number" id="s104" value="${settings.l104}"></label><label class="f">SW a settimana<input type="number" id="sSw" value="${settings.sw}"></label></div>
@@ -1004,4 +1004,4 @@ store={save:async()=>toast("Attendi il caricamento dei dati"),del:async()=>{},sa
 if(window.claude && claude.use) initStore(); else { window.claude={use:async()=>null}; initStore(); }
 })();
 </script>
-<script>if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});</script></body></html>
+<script>if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js",{updateViaCache:"none"}).then(r=>r.update()).catch(()=>{});</script></body></html>
