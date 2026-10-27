@@ -138,7 +138,9 @@ tfoot td{font-weight:600}
 label.f{display:flex;flex-direction:column;gap:4px;font-size:.78rem;color:var(--muted);min-width:0;flex:1}
 input,select,textarea{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px 9px;width:100%}
 textarea{font-family:var(--f-mono);font-size:.75rem;min-height:180px}
-.fields{display:flex;gap:10px;flex-wrap:wrap}
+.fields{display:flex;gap:10px;flex-wrap:wrap;align-items:stretch}
+.fields>label.f{justify-content:flex-end;min-width:0;flex:1 1 0}
+.fields>label.f>input,.fields>label.f>select{margin-top:auto}
 .evrow{display:flex;align-items:center;gap:8px;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line)}
 .msg{font-size:.8rem;color:var(--muted)}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:9px 14px;border-radius:6px;font-size:.85rem;z-index:60}
@@ -524,9 +526,9 @@ function openSettings(){
   const m=modal(`<h3>Impostazioni <span class="msg" style="font-family:var(--f-body);font-size:.72rem;font-weight:400">${APP_VER.startsWith("__")?"":"versione "+APP_VER}</span></h3>
     <div class="row" style="justify-content:space-between;border:1px solid var(--line);border-radius:6px;padding:8px 10px" ${UPD_OK?"":"hidden"}><span class="msg" id="sUpdInfo">Aggiornamenti dell'app</span><button class="btn" type="button" id="sUpd">Controlla aggiornamenti</button></div>
     <label class="f">Tema<select id="sTema"><option value="sistema">Come il sistema</option><option value="chiaro">Chiaro</option><option value="scuro">Scuro</option></select></label>
-    <div class="fields"><label class="f">Ferie annue (gg)<input type="number" id="sFer" value="${settings.ferie}"></label><label class="f">Primo anno di utilizzo dell'app<input type="number" id="sStart" value="${startYear()}"></label><label class="f">Ferie dell'anno prima ancora da godere a inizio di quell'anno<input type="number" id="sAp" value="${settings.apFerie?.[startYear()]||0}"></label></div>
+    <div class="fields"><label class="f">Ferie annue (gg)<input type="number" id="sFer" value="${settings.ferie}"></label><label class="f">Primo anno d'uso<input type="number" id="sStart" value="${startYear()}"></label><label class="f">Ferie residue anno prec.<input type="number" id="sAp" value="${settings.apFerie?.[startYear()]||0}"></label></div>
     <div class="fields"><label class="f">L.937 (gg)<input type="number" id="s937" value="${settings.f937}"></label><label class="f">Art. 25 (ore)<input type="number" id="sA25" value="${settings.a25}"></label><label class="f">Art. 23 (ore)<input type="number" id="sA23" value="${settings.a23}"></label></div>
-    <div class="fields"><label class="f">Ore per giornata intera<input id="sGo" ${HMATTR} value="${fmtHM(settings.giornoOre)}"></label><label class="f">104 al mese (gg)<input type="number" id="s104" value="${settings.l104}"></label><label class="f">SW a settimana<input type="number" id="sSw" value="${settings.sw}"></label></div>
+    <div class="fields"><label class="f">Ore giornata intera<input id="sGo" ${HMATTR} value="${fmtHM(settings.giornoOre)}"></label><label class="f">104 al mese (gg)<input type="number" id="s104" value="${settings.l104}"></label><label class="f">SW a settimana<input type="number" id="sSw" value="${settings.sw}"></label></div>
     <div class="row" style="justify-content:space-between;border:1px solid var(--line);border-radius:6px;padding:8px 10px"><span class="msg" id="sAccInfo"></span><button class="btn" type="button" id="sAcc">Accordi smart working</button></div>
     <label class="f">Saldo iniziale recupero compensativo (ore, anche negativo)<input id="sRc" ${HMATTR} value="${fmtHM(settings.rcIniziale)}"></label>
     <div class="fields"><label class="f">Festa patronale<select id="sPat">
@@ -807,7 +809,7 @@ $("bRic").onclick=openRic;
 $("bSettings").onclick=openSettings;
 $("bExport").onclick=openExport;
 // ---------- aggiornamenti ----------
-const APP_VER="27/10 23:35";
+const APP_VER="27/10 23:39";
 const SITE="https://claripinto.github.io/calendario-lavoro/";
 const APK_URL="https://github.com/Claripinto/calendario-lavoro/releases/latest/download/CalendarioLavoro.apk";
 const isNative=()=>!!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform());
