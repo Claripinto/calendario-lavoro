@@ -314,20 +314,24 @@ function weekKey(s){ const d=parse(s); const g=(d.getDay()+6)%7; d.setDate(d.get
 
 // ---------- smart working programmato ----------
 let _all=null, _fa={};
+// Accordi di smart working: ognuno con data inizio, eventuale scadenza e giorni della settimana.
+function swAccordi(){
+  if(Array.isArray(settings.swAccordi)) return settings.swAccordi.slice().sort((a,b)=>a.dal.localeCompare(b.dal));
+  const g=(settings.swDays||[]).map(Number); // vecchio formato: un accordo senza scadenza
+  return g.length ? [{id:"acc0", dal:settings.swDal||"2000-01-01", al:"", giorni:g, note:""}] : [];
+}
+const accordoDi=(s,acc)=> (acc||swAccordi()).filter(a=>a.dal<=s && (!a.al || s<=a.al)).pop();
 function allEvents(){
   if(_all) return _all;
   const real=events.filter(e=>e.t!=="SWX");
-  const days=(settings.swDays||[]).map(Number);
-  if(!days.length){ return _all=real; }
+  const acc=swAccordi(); if(!acc.length){ return _all=real; }
   const byDay={}; for(const e of events) (byDay[e.d] ||= []).push(e);
   const blocks=e=> e.t==="SW"||e.t==="SWX"||FULLDAY.includes(e.t)||(TYPES[e.t].hourly&&e.t!=="RCP"&&+e.h>=Math.min(+settings.giornoOre, oreGiorno(e.d)));
-  const ys=new Set([cur.getFullYear(), +todayIso.slice(0,4)]); const out=[...real];
+  const ys=new Set([cur.getFullYear(), +todayIso.slice(0,4)]); const out=[...real]; const done=new Set();
   for(const y of ys){ const d=new Date(y-1,0,1), end=new Date(y+1,11,31);
-    for(; d<=end; d.setDate(d.getDate()+1)){ const s=iso(d);
-      if(settings.swDal && s<settings.swDal) continue;
-      if(!days.includes(d.getDay()) || !isWorking(s)) continue;
+    for(; d<=end; d.setDate(d.getDate()+1)){ const s=iso(d); if(done.has(s)) continue; done.add(s);
+      const a=accordoDi(s, acc); if(!a || !a.giorni.includes(d.getDay()) || !isWorking(s)) continue;
       if((byDay[s]||[]).some(blocks)) continue;
-      if(out.some(e=>e.id==="v-"+s)) continue;
       out.push({id:"v-"+s,d:s,t:"SW",h:null,n:"programmato",virtual:true}); } }
   return _all=out;
 }
@@ -427,6 +431,10 @@ function renderBalances(y,m){
     `<div class="b"><span class="lbl"><i style="background:${col("SW")}"></i>Smart working (mese)</span><span class="val">${sum(M,"SW")} <small>gg · sett. corrente ${thisWeek}/${settings.sw}</small></span></div>` +
     `<div class="b"><span class="lbl"><i style="background:var(--muted)"></i>Giorni lavorativi</span><span class="val">${lav} <small>gg · ${fh(oreM)}</small></span></div>`;
   if(u104>settings.l104) h+=`<div class="notice">Superati i ${settings.l104} giorni di L.104 nel mese.</div>`;
+  { const acc=swAccordi(), a=accordoDi(todayIso,acc), next=acc.find(x=>x.dal>todayIso);
+    if(a && a.al && !next){ const gg=Math.round((parse(a.al)-parse(todayIso))/864e5);
+      if(gg<=45) h+=`<div class="notice">L'accordo di smart working scade il ${fmt(a.al)} (tra ${gg} giorni). <button class="btn" style="padding:2px 8px;margin-left:4px" onclick="window.__rinnovaSW()">Rinnova</button></div>`; }
+    else if(!a && acc.length && !next){ const last=acc[acc.length-1]; if(last.al && last.al<todayIso) h+=`<div class="notice">Accordo di smart working scaduto il ${fmt(last.al)}: lo smart working non viene più preinserito. <button class="btn" style="padding:2px 8px;margin-left:4px" onclick="window.__rinnovaSW()">Rinnova</button></div>`; } }
   if(over.length) h+=`<div class="notice">Più di ${settings.sw} giorni di smart working in una settimana (${over.map(o=>"sett. "+fmt(o[0])).join(", ")}).</div>`;
   $("month").innerHTML=h;
 }
@@ -515,9 +523,7 @@ function openSettings(){
     <div class="fields"><label class="f">Ferie annue (gg)<input type="number" id="sFer" value="${settings.ferie}"></label><label class="f">Primo anno di utilizzo dell'app<input type="number" id="sStart" value="${startYear()}"></label><label class="f">Ferie dell'anno prima ancora da godere a inizio di quell'anno<input type="number" id="sAp" value="${settings.apFerie?.[startYear()]||0}"></label></div>
     <div class="fields"><label class="f">L.937 (gg)<input type="number" id="s937" value="${settings.f937}"></label><label class="f">Art. 25 (ore)<input type="number" id="sA25" value="${settings.a25}"></label><label class="f">Art. 23 (ore)<input type="number" id="sA23" value="${settings.a23}"></label></div>
     <div class="fields"><label class="f">Ore per giornata intera<input id="sGo" ${HMATTR} value="${fmtHM(settings.giornoOre)}"></label><label class="f">104 al mese (gg)<input type="number" id="s104" value="${settings.l104}"></label><label class="f">SW a settimana<input type="number" id="sSw" value="${settings.sw}"></label></div>
-    <div class="f" style="font-size:.78rem;color:var(--muted)">Giorni fissi di smart working (preinseriti in automatico, esclusi festivi e giorni di assenza)
-      <div class="row" id="sSwDays" style="color:var(--fg)">${[[1,"Lun"],[2,"Mar"],[3,"Mer"],[4,"Gio"],[5,"Ven"]].map(([n,l])=>`<label style="display:inline-flex;gap:5px;align-items:center"><input type="checkbox" value="${n}" style="width:auto" ${(settings.swDays||[]).map(Number).includes(n)?"checked":""}> ${l}</label>`).join("")}</div></div>
-    <label class="f">Smart working programmato a partire dal<input type="date" id="sSwDal" value="${esc(settings.swDal||"")}"></label>
+    <div class="row" style="justify-content:space-between;border:1px solid var(--line);border-radius:6px;padding:8px 10px"><span class="msg" id="sAccInfo"></span><button class="btn" type="button" id="sAcc">Accordi smart working</button></div>
     <label class="f">Saldo iniziale recupero compensativo (ore, anche negativo)<input id="sRc" ${HMATTR} value="${fmtHM(settings.rcIniziale)}"></label>
     <div class="fields"><label class="f">Festa patronale<select id="sPat">
       <option value="lunset">Primo lunedì di settembre (se è l'1, il secondo)</option><option value="primadomset">Prima domenica di settembre</option><option value="lunprimadomset">Lunedì dopo la prima domenica di settembre</option><option value="fisso">Data fissa</option><option value="nessuno">Nessuna</option></select></label>
@@ -528,10 +534,12 @@ function openSettings(){
   m.querySelector("#sCancel").onclick=close;
   m.querySelector("#sBackup").onclick=()=>exportFile("json");
   m.querySelector("#sRestore").onclick=()=>$("fileIn").click();
+  { const a=accordoDi(todayIso); m.querySelector("#sAccInfo").textContent = a ? `In vigore: ${giorniTxt(a.giorni)} · ${a.al?"scade il "+fmt(a.al):"a tempo indeterminato"}` : "Nessun accordo in vigore"; }
+  m.querySelector("#sAcc").onclick=openAccordi;
   m.querySelector("#sSave").onclick=async()=>{
     const g=id=>+m.querySelector(id).value;
     const ns={...settings, ferie:g("#sFer"), f937:g("#s937"), a25:g("#sA25"), a23:g("#sA23"), giornoOre:parseHM(m.querySelector("#sGo").value)||6, l104:g("#s104"), sw:g("#sSw"), rcIniziale:(parseHM(m.querySelector("#sRc").value)||0),
-      patrono:m.querySelector("#sPat").value, patronoData:m.querySelector("#sPd").value.trim()||"09-07", swDays:[...m.querySelectorAll("#sSwDays input:checked")].map(i=>+i.value), swDal:m.querySelector("#sSwDal").value, annoInizio:g("#sStart"), apFerie:{...(settings.apFerie||{}), [g("#sStart")]:g("#sAp")}};
+      patrono:m.querySelector("#sPat").value, patronoData:m.querySelector("#sPd").value.trim()||"09-07", annoInizio:g("#sStart"), apFerie:{...(settings.apFerie||{}), [g("#sStart")]:g("#sAp")}};
     await store.saveSettings(ns); close(); toast("Impostazioni salvate");
   };
 }
@@ -774,6 +782,53 @@ $("bNew").onclick=()=>openForm(todayIso);
 $("bRic").onclick=openRic;
 $("bSettings").onclick=openSettings;
 $("bExport").onclick=openExport;
+// ---------- accordi di smart working ----------
+const GN=[[1,"Lun"],[2,"Mar"],[3,"Mer"],[4,"Gio"],[5,"Ven"]];
+const giorniTxt = g => GN.filter(([n])=>g.includes(n)).map(x=>x[1]).join(", ") || "nessun giorno";
+async function saveAccordi(list){ await store.saveSettings({...settings, swAccordi:list, swDays:[], swDal:""}); _all=null; render(); }
+function openAccordi(){
+  const acc=swAccordi(); const st=a=> a.dal>todayIso?["Futuro","var(--accent)"] : (a.al && a.al<todayIso)?["Concluso","var(--muted)"] : ["In vigore","var(--ok)"];
+  const m=modal(`<h3>Accordi di smart working</h3>
+    <p class="msg" style="margin:0">Ogni accordo vale dal giorno di inizio alla scadenza (o senza scadenza se a tempo indeterminato). Gli accordi conclusi restano nello storico, con i loro giorni di smart working.</p>
+    <div>${acc.length? acc.slice().reverse().map(a=>{ const [t,c]=st(a); return `<div class="evrow"><span><b style="color:${c}">${t}</b> · ${giorniTxt(a.giorni)}<br><span class="msg">dal ${fmt(a.dal)} ${a.al?"al "+fmt(a.al):"· a tempo indeterminato"}${a.note?" · "+esc(a.note):""}</span></span>
+      <span class="row" style="flex-wrap:nowrap"><button class="btn" data-ed="${a.id}">Modifica</button><button class="btn danger" data-rm="${a.id}">Elimina</button></span></div>`; }).join("") : `<p class="msg">Nessun accordo inserito.</p>`}</div>
+    <div class="row" style="justify-content:space-between"><button class="btn" id="aRin" ${acc.length?"":"hidden"}>Rinnova ultimo</button><span class="row"><button class="btn" id="aX">Chiudi</button><button class="btn primary" id="aNew">+ Nuovo accordo</button></span></div>`);
+  m.querySelector("#aX").onclick=close; m.querySelector("#aNew").onclick=()=>editAccordo(null);
+  m.querySelector("#aRin").onclick=()=>rinnova();
+  m.querySelectorAll("[data-ed]").forEach(b=>b.onclick=()=>editAccordo(acc.find(a=>a.id===b.dataset.ed)));
+  m.querySelectorAll("[data-rm]").forEach(b=>{ let armed=false; b.onclick=async()=>{ if(!armed){ armed=true; b.textContent="Conferma"; return; } await saveAccordi(acc.filter(a=>a.id!==b.dataset.rm)); toast("Accordo eliminato"); openAccordi(); }; });
+}
+function rinnova(){ const acc=swAccordi(); const last=acc[acc.length-1]; if(!last) return editAccordo(null);
+  const dal = last.al ? addDays(last.al,1) : todayIso; const al=addDays(addMonths(dal,12),-1);
+  editAccordo({id:null, dal, al, giorni:last.giorni.slice(), note:"", _rinnovo:true}); }
+window.__rinnovaSW = rinnova;
+function editAccordo(a){
+  const nuovo=!a || !a.id; a = a || {dal:todayIso, al:addDays(addMonths(todayIso,12),-1), giorni:[], note:""};
+  const m=modal(`<h3>${nuovo?(a._rinnovo?"Rinnovo accordo":"Nuovo accordo"):"Modifica accordo"}</h3>
+    <div class="f">Giorni di smart working<div class="row" id="aG" style="color:var(--fg)">${GN.map(([n,l])=>`<label style="display:inline-flex;gap:5px;align-items:center"><input type="checkbox" value="${n}" style="width:auto" ${a.giorni.includes(n)?"checked":""}> ${l}</label>`).join("")}</div></div>
+    <div class="row" style="gap:16px"><label style="display:inline-flex;gap:6px;align-items:center"><input type="radio" name="aTipo" value="det" style="width:auto" ${a.al?"checked":""}> A tempo determinato</label><label style="display:inline-flex;gap:6px;align-items:center"><input type="radio" name="aTipo" value="ind" style="width:auto" ${a.al?"":"checked"}> A tempo indeterminato</label></div>
+    <div class="fields"><label class="f">Dal<input type="date" id="aDal" value="${a.dal}"></label><label class="f" id="aAlBox">Al (scadenza)<input type="date" id="aAl" value="${a.al||addDays(addMonths(a.dal,12),-1)}"></label></div>
+    <div class="row" id="aDur" style="gap:6px"><span class="msg">Durata:</span><button class="btn" type="button" data-mesi="6" style="padding:3px 8px">6 mesi</button><button class="btn" type="button" data-mesi="12" style="padding:3px 8px">1 anno</button><button class="btn" type="button" data-mesi="24" style="padding:3px 8px">2 anni</button></div>
+    <label class="f">Nota<input type="text" id="aN" maxlength="200" value="${esc(a.note||"")}" placeholder="es. prot. n. … del …"></label>
+    <p class="msg" id="aInfo"></p>
+    <div class="row" style="justify-content:flex-end"><button class="btn" id="aX">Annulla</button><button class="btn primary" id="aOk">Salva</button></div>`);
+  const q=x=>m.querySelector(x); const det=()=>m.querySelector('input[name="aTipo"]:checked').value==="det";
+  const upd=()=>{ q("#aAlBox").hidden=!det(); q("#aDur").hidden=!det(); }; m.querySelectorAll('input[name="aTipo"]').forEach(r=>r.onchange=upd); upd();
+  m.querySelectorAll("[data-mesi]").forEach(b=>b.onclick=()=>{ q("#aAl").value=addDays(addMonths(q("#aDal").value||todayIso,+b.dataset.mesi),-1); });
+  q("#aX").onclick=openAccordi;
+  q("#aOk").onclick=async()=>{
+    const g=[...m.querySelectorAll("#aG input:checked")].map(i=>+i.value), dal=q("#aDal").value, al=det()?q("#aAl").value:"";
+    if(!dal){ q("#aInfo").textContent="Indica la data di inizio."; return; }
+    if(det() && (!al || al<dal)){ q("#aInfo").textContent="La scadenza deve essere uguale o successiva all'inizio."; return; }
+    if(!g.length){ q("#aInfo").textContent="Scegli almeno un giorno."; return; }
+    let list=swAccordi().filter(x=>x.id!==a.id);
+    const clash=list.find(x=> x.dal<=(al||"9999-12-31") && (!x.al || x.al>=dal));
+    if(clash){ // un accordo precedente ancora aperto si chiude il giorno prima del nuovo
+      if(clash.dal<dal){ clash.al=addDays(dal,-1); } else { q("#aInfo").textContent=`Si sovrappone all'accordo dal ${fmt(clash.dal)}: modifica le date.`; return; } }
+    list.push({id:a.id||("acc"+Date.now().toString(36)), dal, al, giorni:g, note:q("#aN").value.trim()});
+    await saveAccordi(list); toast(nuovo?"Accordo salvato":"Accordo modificato"); openAccordi(); };
+}
+
 // ---------- vista anno ----------
 (function(){
   let Y=new Date().getFullYear();

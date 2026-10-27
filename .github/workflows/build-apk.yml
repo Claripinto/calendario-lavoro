@@ -7,7 +7,6 @@ on:
       - capacitor.config.json
       - package.json
       - assets/**
-      - www/**
       - .github/workflows/build-apk.yml
 permissions:
   contents: write
