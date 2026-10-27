@@ -163,6 +163,7 @@ textarea{font-family:var(--f-mono);font-size:.75rem;min-height:180px}
     </div>
   </header>
 
+  <div id="oggiRC"></div>
   <div class="grid">
     <section class="panel">
       <div class="cal-head">
@@ -401,7 +402,7 @@ function render(){
     el.onclick=()=>dayTap(s); el.onkeydown=ev=>{ if(ev.key==="Enter"||ev.key===" "){ev.preventDefault();dayTap(s,true);} };
     box.append(el);
   }
-  renderBalances(y,m); renderYear(y); renderNextFest(); renderComporto();
+  renderBalances(y,m); renderYear(y); renderNextFest(); renderComporto(); renderOggiRC(); planNotifiche();
 }
 const fmtLong = d => d.toLocaleDateString("it-IT",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
 
@@ -473,6 +474,7 @@ function openDay(s){
   const m=modal(`<h3 style="text-transform:capitalize">${fmtLong(parse(s))}</h3>
     ${fn?`<div class="notice" style="background:var(--fest-bg);color:var(--fest)">${esc(fn)}</div>`:""}
     <div id="evList">${L.length? L.map(e=>`<div class="evrow"><span><b style="color:${col(e.t)}">${TYPES[e.t].n}</b>${TYPES[e.t].hourly?" · "+fh(+e.h):""}${e.n?`<br><span class="msg">${esc(e.n)}</span>`:""}</span><span class="row" style="flex-wrap:nowrap">${e.virtual?"":`<button class="btn" data-edit="${e.id}">Modifica</button>`}<button class="btn danger" data-del="${e.id}">${e.virtual?"Annulla SW":"Elimina"}</button></span></div>`).join("") : `<p class="msg">Nessuna assenza registrata. Giornata ${isWorking(s)?"lavorativa":"non lavorativa"}.</p>`}</div>
+    ${rcDel(s)?`<div class="notice" style="background:var(--surface2);color:var(--fg)">${uscitaTxt(s)} <button class="btn" style="padding:2px 8px;margin-left:4px" onclick="window.__ingresso('${s}')">${rcDel(s).in?"Modifica ingresso":"Segna ingresso"}</button></div>`:""}
     <div class="row" style="justify-content:flex-end"><button class="btn" id="mClose">Chiudi</button><button class="btn primary" id="mAdd" ${isWorking(s)?"":"hidden"}>+ Aggiungi in questo giorno</button></div>`);
   m.querySelector("#mClose").onclick=close; m.querySelector("#mAdd").onclick=()=>openForm(s);
   m.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>openEdit(events.find(e=>e.id===b.dataset.edit)));
@@ -620,10 +622,10 @@ async function initStore(){
   try{ db=await claude.use("db"); const user=await claude.use("user"); uid=user? await user.id():null; }catch(_){ db=null; }
   if(db && uid){
     const c=db.collection("data/users/"+uid);
-    store={ save:e=>c.doc(e.id).set({k:"ev",d:e.d,t:e.t,h:e.h,n:e.n,g:e.g||null}), del:id=>c.doc(id).delete(), saveSettings:s=>c.doc("settings").set({k:"settings",...s}) };
+    store={ save:e=>c.doc(e.id).set({k:"ev",d:e.d,t:e.t,h:e.h,n:e.n,g:e.g||null,in:e.in||null}), del:id=>c.doc(id).delete(), saveSettings:s=>c.doc("settings").set({k:"settings",...s}) };
     c.onSnapshot(snap=>{
       const ev=[]; let st=null;
-      for(const d of snap.docs){ const x=d.data()||{}; if(d.id==="settings") st=x; else if(x.k==="ev" && TYPES[x.t]) ev.push({id:d.id,d:x.d,t:x.t,h:x.h,n:x.n,g:x.g||null}); }
+      for(const d of snap.docs){ const x=d.data()||{}; if(d.id==="settings") st=x; else if(x.k==="ev" && TYPES[x.t]) ev.push({id:d.id,d:x.d,t:x.t,h:x.h,n:x.n,g:x.g||null,in:x.in||null}); }
       events=ev; _all=null; _fa={}; if(st){ const {k,...rest}=st; settings={...DEF,...rest}; clearFest(); }
       $("status").textContent="dati sincronizzati online"; render();
     }, err=>{ $("status").textContent="errore di sincronizzazione: "+(err?.message||err?.code||""); });
@@ -808,8 +810,50 @@ $("bNew").onclick=()=>openForm(todayIso);
 $("bRic").onclick=openRic;
 $("bSettings").onclick=openSettings;
 $("bExport").onclick=openExport;
+// ---------- recupero: ingresso, uscita e notifiche ----------
+const MAXPRES=5*60+55; // minuti: restare sotto le 6 ore per non far scattare la pausa
+const rcDel = d => events.find(e=>e.d===d && e.t==="RC");
+const hm2m = t => { const [h,m]=String(t||"").split(":").map(Number); return h*60+(m||0); };
+const m2hm = m => `${pad(Math.floor(m/60)%24)}:${pad(Math.round(m%60))}`;
+function calcUscita(d){ const e=rcDel(d); if(!e) return null;
+  const lav=Math.round(oreGiorno(d)*60 - (+e.h||0)*60); const pres=Math.min(lav, MAXPRES);
+  return {e, lav, pres, capped: lav>MAXPRES, uscita: e.in ? hm2m(e.in)+pres : null}; }
+function uscitaTxt(d){ const u=calcUscita(d); if(!u) return "";
+  const base=`Recupero ${fh(+u.e.h)}: da fare ${fh(u.pres/60)} di presenza`;
+  if(!u.e.in) return base+(u.capped?" (fermati a 5h55 per evitare la pausa)":"")+".";
+  return `Ingresso ${u.e.in} → <b>uscita ${m2hm(u.uscita)}</b>${u.capped?" (5h55, così non scatta la pausa)":""}.`; }
+function renderOggiRC(){ const box=$("oggiRC"); if(!box) return; const u=calcUscita(todayIso);
+  box.innerHTML = u ? `<div class="notice" style="margin:-4px 0 14px;background:var(--surface);color:var(--fg);border:1px solid var(--line);display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap"><span><b>Oggi</b> · ${uscitaTxt(todayIso)}</span><button class="btn primary" onclick="window.__ingresso('${todayIso}')">${u.e.in?"Modifica ingresso":"Segna ingresso"}</button></div>` : ""; }
+window.__ingresso = function(d){
+  const u=calcUscita(d); if(!u) return; const now=new Date(); const def=u.e.in || `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  const m=modal(`<h3>Orario di ingresso</h3><p class="msg" style="margin:0">${fmtLong(parse(d))} · recupero ${fh(+u.e.h)}</p>
+    <label class="f">Ingresso<input type="time" id="inT" value="${def}"></label><p id="inOut" style="margin:0"></p>
+    <div class="row" style="justify-content:flex-end"><button class="btn" id="inX">Annulla</button><button class="btn primary" id="inOk">Salva</button></div>`);
+  const T=m.querySelector("#inT"), O=m.querySelector("#inOut");
+  const upd=()=>{ if(!T.value){ O.textContent=""; return; } const out=hm2m(T.value)+u.pres; O.innerHTML=`Uscita alle <b>${m2hm(out)}</b>${u.capped?" (5h55 di presenza, così non scatta la pausa)":""}. Notifica alle ${m2hm(out-15)}.`; };
+  T.oninput=upd; upd(); m.querySelector("#inX").onclick=close;
+  m.querySelector("#inOk").onclick=async()=>{ if(!T.value) return; await store.save({...u.e, in:T.value}); close();
+    await notificaUscita(d, hm2m(T.value)+u.pres); toast(`Uscita alle ${m2hm(hm2m(T.value)+u.pres)}`); };
+};
+const LN=()=> isNative() && window.Capacitor.Plugins && Capacitor.Plugins.LocalNotifications;
+async function permessoNotifiche(){ const L=LN(); if(!L) return false; try{ let p=await L.checkPermissions(); if(p.display!=="granted") p=await L.requestPermissions(); return p.display==="granted"; }catch(_){ return false; } }
+const idDay = (d,k) => +d.replace(/-/g,"")*10+k; // k=0 promemoria mattino, k=1 uscita
+async function notificaUscita(d, outMin){ const L=LN(); if(!L || !(await permessoNotifiche())) return;
+  const [y,mo,da]=d.split("-").map(Number); let at=new Date(y,mo-1,da,0,0,0); at.setMinutes(outMin-15); if(at<new Date()) at=new Date(Date.now()+5000);
+  try{ await L.cancel({notifications:[{id:idDay(d,1)}]}); }catch(_){}
+  await L.schedule({notifications:[{id:idDay(d,1), title:"Tra 15 minuti puoi uscire", body:`Uscita alle ${m2hm(outMin)} · recupero compensativo`, schedule:{at, allowWhileIdle:true}, extra:{d}}]}); }
+let planT=null;
+function planNotifiche(){ if(!LN()) return; clearTimeout(planT); planT=setTimeout(async()=>{ const L=LN();
+  try{ if(!(await permessoNotifiche())) return;
+    const pend=(await L.getPending()).notifications||[]; const old=pend.filter(n=>n.id%10===0).map(n=>({id:n.id})); if(old.length) await L.cancel({notifications:old});
+    const now=new Date(), lim=addDays(todayIso,60);
+    const list=events.filter(e=>e.t==="RC" && e.d>=todayIso && e.d<=lim).map(e=>{ const [y,mo,da]=e.d.split("-").map(Number); return {id:idDay(e.d,0), title:"Oggi recupero compensativo "+fh(+e.h), body:"Tocca per segnare l'orario di ingresso e sapere quando uscire", schedule:{at:new Date(y,mo-1,da,8,0,0), allowWhileIdle:true}, extra:{d:e.d}}; }).filter(n=>n.schedule.at>now);
+    if(list.length) await L.schedule({notifications:list});
+  }catch(_){ } },1500); }
+setTimeout(()=>{ if(LN()){ try{ Capacitor.Plugins.LocalNotifications.addListener("localNotificationActionPerformed", a=>{ const d=a&&a.notification&&a.notification.extra&&a.notification.extra.d; if(d){ cur=new Date(+d.slice(0,4),+d.slice(5,7)-1,1); render(); if(a.notification.id%10===0) setTimeout(()=>window.__ingresso(d),300); } }); }catch(_){} } },0);
+
 // ---------- aggiornamenti ----------
-const APP_VER="27/10 23:39";
+const APP_VER="27/10 23:52";
 const SITE="https://claripinto.github.io/calendario-lavoro/";
 const APK_URL="https://github.com/Claripinto/calendario-lavoro/releases/latest/download/CalendarioLavoro.apk";
 const isNative=()=>!!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform());
