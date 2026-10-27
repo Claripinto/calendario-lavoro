@@ -37,22 +37,10 @@ jobs:
           npx @capacitor/assets generate --android --iconBackgroundColor '#1d5a86' --splashBackgroundColor '#f3f5f7'
           npx cap sync android
           sed -i "s/versionCode 1$/versionCode ${{ github.run_number }}/; s/versionName \"1.0\"/versionName \"1.${{ github.run_number }}\"/" android/app/build.gradle
-          grep -E 'versionCode|versionName' android/app/build.gradle
+          grep -E 'versionCode|versionName' android/app/build.gradle || true
           # firma sempre con la stessa chiave (quella dei Secrets), non con una chiave generata a caso
-          cat >> android/app/build.gradle <<EOG
-
-android {
-    signingConfigs {
-        debug {
-            storeFile file("$GITHUB_WORKSPACE/firma.keystore")
-            storePassword "android"
-            keyAlias "androiddebugkey"
-            keyPassword "android"
-        }
-    }
-}
-EOG
-          tail -12 android/app/build.gradle
+          echo 'apply from: "../../firma.gradle"' >> android/app/build.gradle
+          tail -3 android/app/build.gradle || true
           sed -i 's#</manifest>#    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>\n    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>\n    <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>\n    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>\n</manifest>#' android/app/src/main/AndroidManifest.xml
       - name: Compila
         run: |
