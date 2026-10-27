@@ -1,0 +1,10 @@
+{
+  "appId": "it.orazio.calendariolavoro",
+  "appName": "Calendario Lavoro",
+  "webDir": "www",
+  "server": {
+    "url": "https://claripinto.github.io/calendario-lavoro/",
+    "errorPath": "offline.html"
+  },
+  "android": { "backgroundColor": "#f3f5f7" }
+}

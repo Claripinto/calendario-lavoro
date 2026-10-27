@@ -1,0 +1,913 @@
+<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#1d5a86"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font-family:system-ui,sans-serif;font-size:14px}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>Calendario Lavoro Orazio</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: agenda da ufficio — calendario mensile a sinistra, colonna saldi a destra; su telefono si impila */
+:root{
+  --bg:#f3f5f7; --surface:#ffffff; --surface2:#e9edf1; --line:#d5dce3;
+  --fg:#17212b; --muted:#5b6876; --accent:#1d5a86; --accent-fg:#ffffff;
+  --fest:#c0392b; --fest-bg:#fbeceb; --fest-cell:#a8233a; --sat-bg:#f5e1e5; --sat-fg:#a8233a; --work-bg:#fbf4d9; --work-fg:#2b2615; --weekend:#eef1f4; --today:#1d5a86;
+  --warn:#a15c00; --warn-bg:#fff3dc; --ok:#2e7d5b;
+  --c-FER:#2e7d5b; --c-F937:#6d8a1e; --c-A25:#7b4fd6; --c-A23:#c26a06; --c-RC:#0e7490; --c-RCP:#55687a;
+  --c-L104:#c2296f; --c-SW:#2f62d1; --c-MAL:#8a3b12; --c-ALT:#6b7280;
+  --f-display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body:"IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#11171d; --surface:#18212a; --surface2:#212c37; --line:#2e3b48;
+  --fg:#e5ebf0; --muted:#93a1af; --accent:#6aaedc; --accent-fg:#0d1720;
+  --fest:#ff7b6b; --fest-bg:#3a1f1c; --weekend:#151d24; --today:#6aaedc;
+  --warn:#ffbf5e; --warn-bg:#3a2a10; --ok:#5fc596;
+  --c-FER:#4fb886; --c-F937:#a5c44a; --c-A25:#a98bf5; --c-A23:#f0a24a; --c-RC:#38b6d0; --c-RCP:#90a3b5;
+  --c-L104:#ee6aa6; --c-SW:#6f97f0; --c-MAL:#d9824f; --c-ALT:#9aa3ae; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#11171d; --surface:#18212a; --surface2:#212c37; --line:#2e3b48;
+  --fg:#e5ebf0; --muted:#93a1af; --accent:#6aaedc; --accent-fg:#0d1720;
+  --fest:#ff7b6b; --fest-bg:#3a1f1c; --weekend:#151d24; --today:#6aaedc;
+  --warn:#ffbf5e; --warn-bg:#3a2a10; --ok:#5fc596;
+  --c-FER:#4fb886; --c-F937:#a5c44a; --c-A25:#a98bf5; --c-A23:#f0a24a; --c-RC:#38b6d0; --c-RCP:#90a3b5;
+  --c-L104:#ee6aa6; --c-SW:#6f97f0; --c-MAL:#d9824f; --c-ALT:#9aa3ae; color-scheme:dark }
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.45}
+.wrap{max-width:1240px;margin:0 auto;padding-block:20px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header.top{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;margin-bottom:16px}
+h1{font-family:var(--f-display);font-size:1.6rem;margin:0;letter-spacing:-.01em;text-wrap:balance}
+.sub{color:var(--muted);font-size:.85rem}
+.btn{font:inherit;font-weight:500;border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:6px;padding:7px 12px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn:focus-visible,select:focus-visible,input:focus-visible,.day:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--fest)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:20px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px}
+.cal-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.cal-head h2{font-family:var(--f-display);font-size:1.3rem;margin:0;text-transform:capitalize;min-width:170px}
+.dow,.days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr))}
+.dow div{padding:6px 8px;font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);border-bottom:1px solid var(--line)}
+.dow div:nth-child(n+6){color:var(--fest)}
+.day{min-height:96px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:5px 6px;cursor:pointer;display:flex;flex-direction:column;gap:3px;min-width:0;background:var(--surface)}
+.day:nth-child(7n){border-right:0}
+.day.out{opacity:.38}
+.day.we{background:var(--weekend)}
+.day.fest{background:var(--fest-cell)}
+.days .day.filled .num{color:#fff}
+.day.work{background:var(--work-bg)}
+.day.work:not(.filled) .num{color:var(--work-fg)}
+.day.sat{background:var(--sat-bg)}
+.day.sat:not(.filled) .num{color:var(--sat-fg)}
+.yv-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (min-width:700px){.yv-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (min-width:1050px){.yv-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.mm{display:flex;flex-direction:column;justify-content:flex-start;align-self:start;border:1px solid var(--line);border-radius:8px;padding:8px;cursor:pointer;background:var(--surface);min-width:0;font:inherit;color:inherit;text-align:left}
+@media (hover:hover){.mm:hover{border-color:var(--accent)}}
+.mm:focus-visible{border-color:var(--accent);outline:none}
+.mm.cur{box-shadow:inset 0 0 0 2px var(--accent)}
+.mm h4{margin:0 0 5px;font-family:var(--f-display);text-transform:capitalize;font-size:.92rem;text-align:center}
+.mg{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px}
+.mg span{font-size:.62rem;line-height:1.7;text-align:center;font-family:var(--f-mono);border-radius:2px;color:var(--work-fg);font-variant-numeric:tabular-nums}
+.mg .h{color:var(--muted);font-family:var(--f-body);background:none!important}
+.mg .mt{background:var(--work-bg)}.mg .ms{background:var(--sat-bg);color:var(--sat-fg)}.mg .mf{background:var(--fest-cell);color:#fff}
+.mg .me{color:#fff}.mg .td{outline:2px solid var(--accent);outline-offset:-1px}
+.satl{font-size:.62rem;color:var(--sat-fg);line-height:1.15;opacity:.9}
+.day:hover{box-shadow:inset 0 0 0 2px var(--accent)}
+.days .day.fest .num,.days .day.fest .fname{color:#fff}
+.day.fest.today .num b{background:#fff;color:var(--fest-cell)}
+.day.filled .num,.day.filled .fname{color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.45)}
+.day.filled{padding:0;gap:0}
+.palette{position:sticky;bottom:env(safe-area-inset-bottom,0px);z-index:5;background:var(--surface);border-top:1px solid var(--line);padding:8px 10px;display:flex;flex-direction:column;gap:6px;border-radius:0 0 8px 8px}
+.pal-modes{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.pal-modes .btn{padding:5px 10px;font-size:.8rem}
+.pal-modes .btn.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.pal-hint{font-size:.75rem;color:var(--muted);flex:1;min-width:140px}
+.pal-tools{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:thin}
+.tool{flex:0 0 auto;font:inherit;font-size:.78rem;font-weight:600;color:#fff;border:2px solid transparent;border-radius:6px;padding:8px 10px;cursor:pointer;min-width:64px;text-shadow:0 1px 1px rgba(0,0,0,.3)}
+.tool.on{border-color:var(--fg);box-shadow:0 0 0 2px var(--surface) inset;transform:translateY(-2px)}
+.tool.del{background:var(--surface);color:var(--fest);border-color:var(--fest);text-shadow:none}
+.tool.del.on{background:var(--fest);color:#fff}
+.days.painting{touch-action:none;user-select:none;-webkit-user-select:none}
+.day.sel{box-shadow:inset 0 0 0 3px var(--accent)!important}
+.band{flex:1 1 0;padding:4px 6px;display:flex;flex-direction:column;gap:3px;min-width:0;min-height:0}
+.band+.band{border-top:1px solid rgba(255,255,255,.55)}
+@media (max-width:560px){.band{padding:2px 3px}}
+.day.filled .chip{background:rgba(0,0,0,.22);text-shadow:0 1px 1px rgba(0,0,0,.3)}
+.day.filled.today .num b{background:#fff;color:#17212b;text-shadow:none}
+.day.filled:hover{box-shadow:inset 0 0 0 3px var(--fg)}
+.num{font-family:var(--f-mono);font-size:.85rem;display:flex;justify-content:space-between;align-items:center;gap:4px}
+.day.fest .num,.day.we .num{color:var(--fest)}
+.day.today .num b{background:var(--today);color:var(--accent-fg);border-radius:4px;padding:0 5px}
+.fname{font-size:.66rem;color:var(--fest);line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chip{font-size:.7rem;font-weight:600;color:#fff;border-radius:4px;padding:1px 5px;line-height:1.2;overflow:hidden}
+.chip .cl{display:block;white-space:nowrap;overflow:hidden;text-overflow:clip}
+#ytab th:first-child,#ytab td:first-child,#simTab th:first-child,#simTab td:first-child{position:sticky;left:0;z-index:2;background:var(--surface);box-shadow:1px 0 0 var(--line)}
+@media (max-width:560px){.day{min-height:64px;padding:3px}.chip{font-size:.56rem;padding:0 2px;letter-spacing:-.02em}.fname{display:none}.cal-head h2{font-size:1.1rem;min-width:0}}
+.legend{display:flex;flex-wrap:wrap;gap:6px 12px;padding:10px 14px;font-size:.76rem;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.side{display:flex;flex-direction:column;gap:16px}
+.side .panel{padding:14px}
+.side h3{font-family:var(--f-display);font-size:1rem;margin:0 0 10px}
+.bal{display:grid;gap:10px}
+.b{display:grid;grid-template-columns:1fr auto;gap:2px 8px;align-items:baseline}
+.b .lbl{font-size:.82rem;display:flex;align-items:center;gap:6px}
+.b .lbl i{width:8px;height:8px;border-radius:2px}
+.b .val{font-family:var(--f-mono);font-variant-numeric:tabular-nums;font-size:.95rem}
+.b .val small{color:var(--muted);font-size:.72rem}
+.bar{grid-column:1/-1;height:5px;background:var(--surface2);border-radius:3px;overflow:hidden}
+.bar span{display:block;height:100%}
+.b.neg .val{color:var(--fest)}
+.notice{font-size:.8rem;padding:8px 10px;border-radius:6px;background:var(--warn-bg);color:var(--warn)}
+.list{display:flex;flex-direction:column;gap:6px;font-size:.82rem}
+.list .it{display:flex;justify-content:space-between;gap:8px}
+.list .it span:last-child{color:var(--muted);font-family:var(--f-mono);font-size:.78rem;white-space:nowrap}
+.tablewrap{overflow-x:auto;margin-top:20px}
+table{border-collapse:collapse;width:100%;font-size:.8rem;font-variant-numeric:tabular-nums}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{font-weight:600;color:var(--muted);font-size:.7rem;text-transform:uppercase;letter-spacing:.05em}
+tfoot td{font-weight:600}
+.modal-bg{position:fixed;inset:0;background:rgba(10,15,20,.45);display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;z-index:50;overflow-y:auto}
+.modal{background:var(--surface);border:1px solid var(--line);border-radius:10px;width:min(520px,100%);padding:18px;display:flex;flex-direction:column;gap:14px}
+.modal h3{font-family:var(--f-display);margin:0;font-size:1.15rem}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:.78rem;color:var(--muted);min-width:0;flex:1}
+input,select,textarea{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px 9px;width:100%}
+textarea{font-family:var(--f-mono);font-size:.75rem;min-height:180px}
+.fields{display:flex;gap:10px;flex-wrap:wrap}
+.evrow{display:flex;align-items:center;gap:8px;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line)}
+.msg{font-size:.8rem;color:var(--muted)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:9px 14px;border-radius:6px;font-size:.85rem;z-index:60}
+.status{font-size:.75rem;color:var(--muted)}
+@media (prefers-reduced-motion:no-preference){.day{transition:box-shadow .12s}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Calendario Lavoro</h1>
+      <div class="sub">Ferie, permessi, festività · Lun–Ven · patrono di Brindisi · <span id="status" class="status">caricamento…</span></div>
+    </div>
+    <div class="row">
+      <button class="btn primary" id="bNew">+ Registra assenza</button>
+      <button class="btn" id="bRic">↻ Ricorrenza</button>
+      <button class="btn" id="bExport">Esporta</button>
+      <button class="btn" id="bSim">Simulatore comporto</button>
+      <button class="btn" id="bSettings">Impostazioni</button>
+    </div>
+  </header>
+
+  <div class="grid">
+    <section class="panel">
+      <div class="cal-head">
+        <div class="row">
+          <button class="btn ghost" id="prev" aria-label="Mese precedente">‹</button>
+          <h2 id="mTitle" role="button" tabindex="0" title="Vedi tutto l'anno" style="cursor:pointer"></h2>
+          <button class="btn ghost" id="next" aria-label="Mese successivo">›</button>
+        </div>
+        <div class="row"><button class="btn" id="bYear">Anno</button><button class="btn" id="bToday">Oggi</button></div>
+      </div>
+      <div class="dow"><div>Lun</div><div>Mar</div><div>Mer</div><div>Gio</div><div>Ven</div><div>Sab</div><div>Dom</div></div>
+      <div class="days" id="days"></div>
+      <div class="palette" id="palette"></div>
+      <div class="legend" id="legend" hidden></div>
+    </section>
+
+    <aside class="side">
+      <div class="panel"><h3 id="balTitle">Saldi</h3><div class="bal" id="bal"></div></div>
+      <div class="panel"><h3>Questo mese</h3><div class="bal" id="month"></div></div>
+      <div class="panel"><h3>Prossime festività</h3><div class="list" id="nextFest"></div></div>
+    </aside>
+  </div>
+
+  <section class="panel tablewrap" style="padding:14px">
+    <h3 style="font-family:var(--f-display);margin:0 0 8px" id="yTitle">Riepilogo annuale</h3>
+    <div style="overflow-x:auto"><table id="ytab"></table></div>
+    <p class="msg">Ferie, L.937, 104, smart working e malattia in giorni; art. 25, art. 23 e recupero in ore.</p>
+  </section>
+
+  <section class="panel" style="padding:14px;margin-top:20px" id="comporto">
+    <h3 style="font-family:var(--f-display);margin:0 0 4px">Periodo di comporto</h3>
+    <p class="msg" style="margin:0 0 12px">Art. 24 CCNL Funzioni Centrali 2022–2024: massimo 18 mesi di malattia nel triennio mobile. Trattamento (comma 10): 100% per i primi 9 mesi, 90% per i successivi 3, 50% per gli ulteriori 6. Ogni certificato è una riga; la durata è in mesi di calendario più giorni (30 giorni = 1 mese). Il triennio parte dalla data di inizio indicata, compresa. Se un certificato supera i 9, i 12 o i 18 mesi viene diviso nel giorno in cui raggiunge la soglia, e la parte successiva mantiene lo stesso inizio triennio. Un certificato che segue senza interruzioni il precedente è un evento autonomo; tocca la sua data di inizio triennio per trattarlo come prosecuzione (↩).</p>
+    <div id="cmpSum"></div>
+    <div style="overflow-x:auto;margin-top:12px"><table id="cmpTab"></table></div>
+  </section>
+</div>
+
+<section id="yearView" hidden>
+  <div class="wrap">
+    <header class="top">
+      <div class="row" style="gap:10px"><button class="btn" id="yvPrev" aria-label="Anno precedente">‹</button><h1 id="yvTitle" style="min-width:90px;text-align:center"></h1><button class="btn" id="yvNext" aria-label="Anno successivo">›</button></div>
+      <button class="btn" id="yvBack">← Torna al mese</button>
+    </header>
+    <p class="msg" style="margin:0 0 12px">Tocca un mese per aprirlo.</p>
+    <div class="yv-grid" id="yvGrid"></div>
+  </div>
+</section>
+<section id="simView" hidden>
+  <div class="wrap">
+    <header class="top">
+      <div>
+        <h1>Simulatore comporto</h1>
+        <div class="sub">Proiezione della malattia ordinaria nel triennio mobile · art. 24 CCNL Funzioni Centrali 2022–2024 · senza causa di servizio</div>
+      </div>
+      <button class="btn" id="simBack">← Torna al calendario</button>
+    </header>
+    <div class="grid">
+      <section class="panel" style="padding:14px;display:flex;flex-direction:column;gap:14px;min-width:0">
+        <div class="row" id="simCards" style="gap:12px;align-items:stretch"></div>
+        <div style="overflow-x:auto"><svg id="simChart" viewBox="0 0 820 300" style="width:100%;min-width:560px;height:auto;display:block" role="img" aria-label="Cumulo di malattia nel triennio mobile"></svg></div>
+        <div id="simNotes"></div>
+        <div style="overflow-x:auto"><table id="simTab"></table></div>
+      </section>
+      <aside class="side">
+        <div class="panel">
+          <h3>Periodo</h3>
+          <div class="fields"><label class="f">Inizio<input type="date" id="sm_start"></label><label class="f">Anni<select id="sm_years"><option>1</option><option>2</option><option>3</option><option>4</option><option selected>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option><option>11</option><option>12</option><option>13</option><option>14</option><option>15</option></select></label></div>
+          <label class="f" style="flex-direction:row;align-items:center;gap:8px;margin-top:8px"><input type="checkbox" id="sm_hist" style="width:auto" checked> Considera le malattie già registrate</label>
+        </div>
+        <div class="panel">
+          <h3>Settimana tipo</h3>
+          <div class="f">Smart working<div class="row" id="sm_sw" style="color:var(--fg)"></div></div>
+          <div class="f" style="margin-top:8px">Giorni da coprire con malattia<div class="row" id="sm_mal" style="color:var(--fg)"></div></div>
+          <p class="msg" style="margin:8px 0 0">Gli altri giorni lavorativi sono in ufficio. Un giorno in ufficio o in smart working interrompe l'episodio; sabato, domenica e festivi tra due giorni di malattia vengono contati.</p>
+        </div>
+        <div class="panel">
+          <h3>Tutele messe nei giorni da coprire</h3>
+          <div class="fields"><label class="f">Ferie (gg/anno)<input type="number" id="sm_fer" min="0" max="40"></label><label class="f">L.937 (gg/anno)<input type="number" id="sm_937" min="0" max="4"></label></div>
+          <div class="fields" style="margin-top:8px"><label class="f">Art. 25 a giornata (gg/anno)<input type="number" id="sm_a25" min="0" max="3"></label><label class="f">L.104 (gg/mese)<input type="number" id="sm_104" min="0" max="3"></label></div>
+          <p class="msg" style="margin:8px 0 0">Distribuite in modo uniforme nell'anno. Ogni giorno di tutela sostituisce un giorno di malattia.</p>
+        </div>
+        <div class="panel">
+          <h3>Prova di resistenza</h3>
+          <div class="fields"><label class="f">Malattia lunga dal<input type="date" id="sm_lungaDal"></label><label class="f">Durata (gg)<input type="number" id="sm_lungaGg" min="0" max="540" value="0"></label></div>
+          <p class="msg" style="margin:8px 0 0">Per esempio un intervento: aggiunge un episodio continuativo e mostra come cambia il trattamento.</p>
+        </div>
+        <button class="btn" id="sm_reset">Ripristina valori di partenza</button>
+      </aside>
+    </div>
+  </div>
+</section>
+
+<div id="modalRoot"></div>
+<input type="file" id="fileIn" accept="application/json,.json" hidden>
+
+<script>
+(function(){
+"use strict";
+// ---------- tipi ----------
+const TYPES = {
+  FER: {n:"Ferie", s:"Ferie", hourly:false},
+  F937:{n:"Festività soppresse L.937/77", s:"L.937", hourly:false},
+  A25: {n:"Permesso art. 25 (motivi personali)", s:"Art.25", hourly:true},
+  A23: {n:"Permesso art. 23 (visite mediche)", s:"Art.23", hourly:true},
+  RC:  {n:"Recupero compensativo fruito", s:"Recupero", hourly:true},
+  RCP: {n:"Straordinario (va a recupero compensativo)", s:"Straord.", hourly:true},
+  L104:{n:"Permesso L.104 (assistenza)", s:"104", hourly:false},
+  SW:  {n:"Smart working", s:"SW", hourly:false},
+  MAL: {n:"Malattia", s:"Malattia", hourly:false},
+  ALT: {n:"Altro (lutto, studio, ecc.)", s:"Altro", hourly:false},
+  SWX: {n:"Smart working annullato", s:"noSW", hourly:false, hidden:true}
+};
+const FULLDAY = ["FER","F937","L104","MAL","ALT"];
+const DEF = {ferie:28, f937:4, a25:18, a23:18, giornoOre:6, l104:3, sw:2, rcIniziale:0, apFerie:{}, patrono:"lunset", patronoData:"09-07", swDays:[], swDal:"", annoInizio:2026};
+const MESI=["gennaio","febbraio","marzo","aprile","maggio","giugno","luglio","agosto","settembre","ottobre","novembre","dicembre"];
+const col = t => `var(--c-${t})`;
+
+// ---------- stato ----------
+let settings = {...DEF};
+let events = [];          // {id,d,t,h,n}
+let cur = new Date(); cur.setDate(1);
+let store = null;         // {save(ev), del(id), saveSettings(s)}
+
+// ---------- date ----------
+const pad = n => String(n).padStart(2,"0");
+const iso = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const parse = s => { const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d); };
+const fmt = s => { const d=parse(s); return `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`; };
+const todayIso = iso(new Date());
+function easter(y){const a=y%19,b=Math.floor(y/100),c=y%100,d=Math.floor(b/4),e=b%4,f=Math.floor((b+8)/25),g=Math.floor((b-f+1)/3),h=(19*a+b-d-g+15)%30,i=Math.floor(c/4),k=c%4,l=(32+2*e+2*i-h-k)%7,m=Math.floor((a+11*h+22*l)/451),mo=Math.floor((h+l-7*m+114)/31),da=((h+l-7*m+114)%31)+1;return new Date(y,mo-1,da);}
+const festCache = {};
+function holidays(y){
+  if(festCache[y]) return festCache[y];
+  const H={}; const add=(m,d,n)=>{H[`${y}-${pad(m)}-${pad(d)}`]=n;};
+  add(1,1,"Capodanno"); add(1,6,"Epifania"); add(4,25,"Festa della Liberazione"); add(5,1,"Festa dei Lavoratori");
+  add(6,2,"Festa della Repubblica"); add(8,15,"Ferragosto"); add(11,1,"Ognissanti");
+  if(y>=2026) add(10,4,"San Francesco d'Assisi");
+  add(12,8,"Immacolata"); add(12,25,"Natale"); add(12,26,"Santo Stefano");
+  const e=easter(y); H[iso(e)]="Pasqua"; const pm=new Date(e); pm.setDate(e.getDate()+1); H[iso(pm)]="Lunedì dell'Angelo";
+  // patrono
+  let p=null;
+  if(settings.patrono==="lunset"){ p=new Date(y,8,1); while(p.getDay()!==1) p.setDate(p.getDate()+1); if(p.getDate()===1) p.setDate(8); }
+  else if(settings.patrono==="fisso"){ const [m,d]=(settings.patronoData||"09-07").split("-").map(Number); p=new Date(y,m-1,d); }
+  else if(settings.patrono==="primadomset"||settings.patrono==="lunprimadomset"){ p=new Date(y,8,1); while(p.getDay()!==0) p.setDate(p.getDate()+1); if(settings.patrono==="lunprimadomset") p.setDate(p.getDate()+1); }
+  if(p){ const k=iso(p); H[k]=H[k]?H[k]+" · Patrono":"Patrono (S. Teodoro e S. Lorenzo)"; }
+  return festCache[y]=H;
+}
+const clearFest=()=>{for(const k in festCache) delete festCache[k];};
+const festName = s => holidays(+s.slice(0,4))[s];
+const isWorking = s => { const g=parse(s).getDay(); return g!==0 && g!==6 && !festName(s); };
+const oreGiorno = s => { const g=parse(s).getDay(); return g>=1&&g<=4 ? 8 : g===5 ? 4 : 0; };
+function weekKey(s){ const d=parse(s); const g=(d.getDay()+6)%7; d.setDate(d.getDate()-g); return iso(d); }
+
+// ---------- smart working programmato ----------
+let _all=null, _fa={};
+function allEvents(){
+  if(_all) return _all;
+  const real=events.filter(e=>e.t!=="SWX");
+  const days=(settings.swDays||[]).map(Number);
+  if(!days.length){ return _all=real; }
+  const byDay={}; for(const e of events) (byDay[e.d] ||= []).push(e);
+  const blocks=e=> e.t==="SW"||e.t==="SWX"||FULLDAY.includes(e.t)||(TYPES[e.t].hourly&&e.t!=="RCP"&&+e.h>=Math.min(+settings.giornoOre, oreGiorno(e.d)));
+  const ys=new Set([cur.getFullYear(), +todayIso.slice(0,4)]); const out=[...real];
+  for(const y of ys){ const d=new Date(y-1,0,1), end=new Date(y+1,11,31);
+    for(; d<=end; d.setDate(d.getDate()+1)){ const s=iso(d);
+      if(settings.swDal && s<settings.swDal) continue;
+      if(!days.includes(d.getDay()) || !isWorking(s)) continue;
+      if((byDay[s]||[]).some(blocks)) continue;
+      if(out.some(e=>e.id==="v-"+s)) continue;
+      out.push({id:"v-"+s,d:s,t:"SW",h:null,n:"programmato",virtual:true}); } }
+  return _all=out;
+}
+
+// ---------- calcoli ----------
+const inYear = y => allEvents().filter(e=>e.d.startsWith(y+"-"));
+const qty = e => TYPES[e.t].hourly ? (+e.h||0) : 1;
+function sum(list,t){ return list.filter(e=>e.t===t).reduce((a,e)=>a+qty(e),0); }
+// Ferie: le residue dell'anno prima si usano per prime e scadono il 30/06
+const startYear = () => +settings.annoInizio || +todayIso.slice(0,4);
+function apAvail(Y){ if(Y<=startYear()) return +(settings.apFerie?.[Y]||0); return Math.max(0, +settings.ferie - ferieAlloc(Y-1).curUsed); }
+function ferieAlloc(Y){
+  if(_fa[Y]) return _fa[Y];
+  const avail=apAvail(Y), lim=`${Y}-06-30`; let apUsed=0, curUsed=0; const apIds=new Set();
+  for(const e of allEvents().filter(e=>e.t==="FER"&&e.d.startsWith(Y+"-")).sort((a,b)=>a.d.localeCompare(b.d))){
+    if(e.d<=lim && apUsed<avail){ apUsed++; apIds.add(e.id); } else curUsed++; }
+  const expired = todayIso>lim ? avail-apUsed : 0;
+  return _fa[Y]={apAvail:avail, apUsed, curUsed, apIds, expired};
+}
+const isAP = e => e.t==="FER" && ferieAlloc(+e.d.slice(0,4)).apIds.has(e.id);
+function rcSaldo(){ return (+settings.rcIniziale||0) + sum(events,"RCP") - sum(events,"RC"); }
+// ore in formato ore,minuti: "2,10" = 2 ore e 10 minuti; accetta anche 2:10 e 2.10
+function parseHM(v){ v=String(v??"").trim(); if(!v) return NaN; let neg=false; if(v[0]==="-"){ neg=true; v=v.slice(1).trim(); }
+  const m=v.match(/^(\d*)(?:[.,:h](\d{0,2}))?$/); if(!m) return NaN; const h=+(m[1]||0); let mm=m[2]||""; if(mm.length===1) mm+="0"; mm=+(mm||0);
+  if(mm>=60) return NaN; const r=h+mm/60; return neg?-r:r; }
+function fmtHM(x){ x=+x||0; const neg=x<0; x=Math.abs(x); let h=Math.floor(x), mm=Math.round((x-h)*60); if(mm===60){h++;mm=0;} return (neg?"-":"")+h+(mm?","+String(mm).padStart(2,"0"):""); }
+const HMATTR='type="text" inputmode="decimal" placeholder="es. 2,10 = 2 h 10 min" autocomplete="off"';
+const fh = h => { const v=Math.round(h*100)/100; const hh=Math.trunc(v), mm=Math.round((Math.abs(v)-Math.abs(hh))*60); return mm? `${hh}h${pad(mm)}` : `${hh}h`; };
+
+// ---------- render ----------
+const $ = id => document.getElementById(id);
+function render(){
+  const y=cur.getFullYear(), m=cur.getMonth();
+  $("mTitle").textContent = `${MESI[m]} ${y}`;
+  const first=new Date(y,m,1); const start=new Date(first); start.setDate(1-((first.getDay()+6)%7));
+  _all=null; _fa={};
+  const byDay={}; for(const e of allEvents()){ (byDay[e.d] ||= []).push(e); }
+  const box=$("days"); box.textContent="";
+  for(let i=0;i<42;i++){
+    const d=new Date(start); d.setDate(start.getDate()+i); const s=iso(d);
+    if(i>=35 && d.getMonth()!==m) break;
+    const el=document.createElement("div"); el.className="day"; el.tabIndex=0; el.setAttribute("role","button");
+    const g=d.getDay(); const fn=festName(s);
+    if(d.getMonth()!==m) el.classList.add("out");
+    if(g===0||g===6) el.classList.add("we");
+    if(g===0) el.classList.add("fest");
+    if(g===6 && !fn) el.classList.add("sat");
+    if(isWorking(s)) el.classList.add("work");
+    if(fn) el.classList.add("fest");
+    if(s===todayIso) el.classList.add("today");
+    const num=document.createElement("div"); num.className="num"; const b=document.createElement("b"); b.textContent=d.getDate(); num.append(b); el.append(num);
+    if(g===6 && !fn && !(byDay[s]||[]).length){ const f=document.createElement("div"); f.className="satl"; f.textContent="Non lavorativo"; el.append(f); }
+    if(fn){ const f=document.createElement("div"); f.className="fname"; f.textContent=fn; f.title=fn; el.append(f); }
+    const evs=byDay[s]||[]; const tipi=[...new Set(evs.map(e=>e.t))];
+    if(tipi.length){ el.classList.add("filled"); const top=[...el.children];
+      tipi.forEach((t,i)=>{ const band=document.createElement("div"); band.className="band"; band.style.background=col(t);
+        if(i===0) band.append(...top);
+        for(const e of evs.filter(e=>e.t===t)){ const c=document.createElement("div"); c.className="chip";
+          c.innerHTML = `${isAP(e)?`<span class="cl">Ferie</span><span class="cl">A.P.</span>`:`<span class="cl">${TYPES[e.t].s}</span>`}${TYPES[e.t].hourly?`<span class="cl">${fh(+e.h)}</span>`:""}`; c.title=(TYPES[e.t].n)+(e.n?" — "+e.n:""); band.append(c); }
+        el.append(band); }); }
+    el.setAttribute("aria-label", fmtLong(d)+(fn?", "+fn:""));
+    el.dataset.d=s; if(rangeStart===s) el.classList.add("sel");
+    el.onclick=()=>dayTap(s); el.onkeydown=ev=>{ if(ev.key==="Enter"||ev.key===" "){ev.preventDefault();dayTap(s,true);} };
+    box.append(el);
+  }
+  renderBalances(y,m); renderYear(y); renderNextFest(); renderComporto();
+}
+const fmtLong = d => d.toLocaleDateString("it-IT",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
+
+function balRow(t,label,used,tot,unit){
+  const left=tot-used; const pct=tot>0?Math.min(100,used/tot*100):0;
+  const val = unit==="h" ? `${fh(left)} <small>/ ${fh(tot)}</small>` : `${left} <small>/ ${tot} gg</small>`;
+  return `<div class="b${left<0?" neg":""}"><span class="lbl"><i style="background:${col(t)}"></i>${label}</span><span class="val">${val}</span><div class="bar"><span style="width:${pct}%;background:${col(t)}"></span></div></div>`;
+}
+function renderBalances(y,m){
+  const L=inYear(y); const fa=ferieAlloc(y); const apLeft=fa.apAvail-fa.apUsed-fa.expired;
+  $("balTitle").textContent=`Saldi residui ${y}`;
+  const rc=rcSaldo();
+  $("bal").innerHTML =
+    (fa.apAvail ? balRow("FER", `Ferie ${y-1} (entro 30/06/${y})`, fa.apUsed+fa.expired, fa.apAvail, "g") +
+      (fa.expired ? `<div class="notice">${fa.expired} gg di ferie ${y-1} non goduti entro il 30/06 sono scaduti.</div>` : apLeft>0 && todayIso.startsWith(y+"-") ? `<div class="notice">Restano ${apLeft} gg di ferie ${y-1} da godere entro il 30/06/${y}.</div>` : "") : "") +
+    balRow("FER", `Ferie ${y}`, fa.curUsed, +settings.ferie, "g") +
+    balRow("F937","Festività soppresse L.937", sum(L,"F937"), +settings.f937, "g") +
+    balRow("A25","Art. 25 motivi personali", sum(L,"A25"), +settings.a25, "h") +
+    balRow("A23","Art. 23 visite mediche", sum(L,"A23"), +settings.a23, "h") +
+    `<div class="b${rc<0?" neg":""}"><span class="lbl"><i style="background:${col("RC")}"></i>Recupero compensativo</span><span class="val">${fh(rc)} <small>saldo</small></span><span class="msg" style="grid-column:1/-1;font-size:.74rem">Nel ${y}: straordinario +${fh(sum(L,"RCP"))} · recupero fruito −${fh(sum(L,"RC"))}</span></div>` +
+    `<div class="b"><span class="lbl"><i style="background:${col("MAL")}"></i>Malattia nell'anno</span><span class="val">${sum(L,"MAL")} <small>gg</small></span></div>`;
+  // mese
+  const mk=`${y}-${pad(m+1)}`; const M=allEvents().filter(e=>e.d.startsWith(mk));
+  let lav=0, oreM=0; const dim=new Date(y,m+1,0).getDate(); for(let d=1;d<=dim;d++) if(isWorking(`${mk}-${pad(d)}`)){ lav++; oreM+=oreGiorno(`${mk}-${pad(d)}`); }
+  const u104=sum(M,"L104");
+  // settimane SW del mese
+  const weeks={}; for(const e of allEvents().filter(e=>e.t==="SW")){ const w=weekKey(e.d); weeks[w]=(weeks[w]||0)+1; }
+  const over=Object.entries(weeks).filter(([w,n])=>n>settings.sw && (w.startsWith(mk)||weekKey(mk+"-01")===w));
+  const thisWeek = weeks[weekKey(todayIso)]||0;
+  let h = balRow("L104","Legge 104 (mese)", u104, +settings.l104, "g") +
+    `<div class="b"><span class="lbl"><i style="background:${col("SW")}"></i>Smart working (mese)</span><span class="val">${sum(M,"SW")} <small>gg · sett. corrente ${thisWeek}/${settings.sw}</small></span></div>` +
+    `<div class="b"><span class="lbl"><i style="background:var(--muted)"></i>Giorni lavorativi</span><span class="val">${lav} <small>gg · ${fh(oreM)}</small></span></div>`;
+  if(u104>settings.l104) h+=`<div class="notice">Superati i ${settings.l104} giorni di L.104 nel mese.</div>`;
+  if(over.length) h+=`<div class="notice">Più di ${settings.sw} giorni di smart working in una settimana (${over.map(o=>"sett. "+fmt(o[0])).join(", ")}).</div>`;
+  $("month").innerHTML=h;
+}
+function renderYear(y){
+  $("yTitle").textContent=`Riepilogo ${y}`;
+  const keys=["FER","F937","A25","A23","RC","RCP","L104","SW","MAL","ALT"];
+  let h="<thead><tr><th>Mese</th>"+keys.map(k=>`<th style="color:${col(k)}">${TYPES[k].s}</th>`).join("")+"</tr></thead><tbody>";
+  const tot={};
+  for(let m=0;m<12;m++){ const mk=`${y}-${pad(m+1)}`; const M=allEvents().filter(e=>e.d.startsWith(mk));
+    h+=`<tr><td style="text-transform:capitalize">${MESI[m]}</td>`+keys.map(k=>{const v=sum(M,k); tot[k]=(tot[k]||0)+v; return `<td>${v? (TYPES[k].hourly?fh(v):v):"·"}</td>`;}).join("")+"</tr>"; }
+  h+="</tbody><tfoot><tr><td>Totale</td>"+keys.map(k=>`<td>${TYPES[k].hourly?fh(tot[k]):tot[k]}</td>`).join("")+"</tr></tfoot>";
+  $("ytab").innerHTML=h;
+}
+function renderNextFest(){
+  const y=+todayIso.slice(0,4); const all={...holidays(y),...holidays(y+1)};
+  const next=Object.keys(all).filter(k=>k>=todayIso).sort().slice(0,5);
+  $("nextFest").innerHTML = next.map(k=>{const d=parse(k); const wd=d.toLocaleDateString("it-IT",{weekday:"short"});
+    return `<div class="it"><span>${esc(all[k])}</span><span>${wd} ${fmt(k)}</span></div>`;}).join("");
+}
+function renderLegend(){ $("legend").innerHTML = Object.keys(TYPES).filter(k=>!TYPES[k].hidden).map(k=>`<span><i style="background:${col(k)}"></i>${TYPES[k].s}</span>`).join("")+`<span><i style="background:var(--fest-bg);border:1px solid var(--fest)"></i>Festivo</span>`; }
+const esc = s => String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+// ---------- modali ----------
+function modal(html){ const r=$("modalRoot"); r.innerHTML=`<div class="modal-bg"><div class="modal" role="dialog" aria-modal="true">${html}</div></div>`;
+  const bg=r.firstChild; bg.addEventListener("click",e=>{ if(e.target===bg) close(); }); document.addEventListener("keydown",escKey); return bg.firstChild; }
+function escKey(e){ if(e.key==="Escape") close(); }
+function close(){ $("modalRoot").innerHTML=""; document.removeEventListener("keydown",escKey); }
+function toast(t){ const d=document.createElement("div"); d.className="toast"; d.textContent=t; document.body.append(d); setTimeout(()=>d.remove(),2600); }
+
+function openDay(s){
+  const L=allEvents().filter(e=>e.d===s); const fn=festName(s);
+  const m=modal(`<h3 style="text-transform:capitalize">${fmtLong(parse(s))}</h3>
+    ${fn?`<div class="notice" style="background:var(--fest-bg);color:var(--fest)">${esc(fn)}</div>`:""}
+    <div id="evList">${L.length? L.map(e=>`<div class="evrow"><span><b style="color:${col(e.t)}">${TYPES[e.t].n}</b>${TYPES[e.t].hourly?" · "+fh(+e.h):""}${e.n?`<br><span class="msg">${esc(e.n)}</span>`:""}</span><span class="row" style="flex-wrap:nowrap">${e.virtual?"":`<button class="btn" data-edit="${e.id}">Modifica</button>`}<button class="btn danger" data-del="${e.id}">${e.virtual?"Annulla SW":"Elimina"}</button></span></div>`).join("") : `<p class="msg">Nessuna assenza registrata. Giornata ${isWorking(s)?"lavorativa":"non lavorativa"}.</p>`}</div>
+    <div class="row" style="justify-content:flex-end"><button class="btn" id="mClose">Chiudi</button><button class="btn primary" id="mAdd" ${isWorking(s)?"":"hidden"}>+ Aggiungi in questo giorno</button></div>`);
+  m.querySelector("#mClose").onclick=close; m.querySelector("#mAdd").onclick=()=>openForm(s);
+  m.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>openEdit(events.find(e=>e.id===b.dataset.edit)));
+  m.querySelectorAll("[data-del]").forEach(b=>b.onclick=async()=>{ const id=b.dataset.del;
+    if(id.startsWith("v-")){ await store.save({id:"x"+s.replace(/-/g,""),d:s,t:"SWX",h:null,n:""}); toast("Smart working annullato per questo giorno"); }
+    else { const ev=events.find(e=>e.id===id); await store.del(id);
+      if(ev && ev.t==="SW"){ const x=events.find(e=>e.d===s&&e.t==="SWX"); if(x) await store.del(x.id); }
+      toast("Registrazione eliminata"); }
+    openDay(s); });
+}
+
+function openForm(s){
+  s=s||todayIso;
+  const m=modal(`<h3>Registra assenza</h3>
+    <label class="f">Tipo<select id="fT">${Object.entries(TYPES).filter(([k,v])=>!v.hidden).map(([k,v])=>`<option value="${k}">${v.n}</option>`).join("")}</select></label>
+    <div class="fields"><label class="f">Dal<input type="date" id="fFrom" value="${s}"></label><label class="f">Al (facoltativo)<input type="date" id="fTo" value=""></label></div>
+    <div class="fields" id="hBox"><label class="f">Ore<input type="number" id="fH" ${HMATTR} value="1"></label>
+      <label class="f" style="flex-direction:row;align-items:center;gap:8px;padding-top:18px"><input type="checkbox" id="fFull" style="width:auto"> <span id="fFullL"></span></label></div>
+    <label class="f">Nota<input type="text" id="fN" maxlength="200" placeholder="es. visita cardiologica, prot. n. …"></label>
+    <p class="msg" id="fInfo"></p>
+    <div class="row" style="justify-content:flex-end"><button class="btn" id="fCancel">Annulla</button><button class="btn primary" id="fSave">Salva</button></div>`);
+  const T=m.querySelector("#fT"), H=m.querySelector("#fH"), F=m.querySelector("#fFull"), From=m.querySelector("#fFrom"), To=m.querySelector("#fTo"), info=m.querySelector("#fInfo");
+  const upd=()=>{ const hr=TYPES[T.value].hourly; m.querySelector("#hBox").hidden=!hr; F.parentElement.hidden=(T.value==="RCP");
+    m.querySelector("#fFullL").textContent = T.value==="RC" ? "Giornata intera (8 ore lun–gio, 4 ore ven)" : `Giornata intera (${settings.giornoOre} ore, anche di venerdì)`;
+    if(T.value==="RC"&&F.checked){ H.disabled=true; H.value=fmtHM(oreGiorno(From.value||todayIso)||8); }
+    H.disabled=F.checked&&hr&&T.value!=="RCP"; if(H.disabled) H.value=fmtHM(settings.giornoOre);
+    const days=rangeDays(From.value,To.value||From.value,T.value);
+    info.textContent = days.length? `Verranno registrati ${days.length} giorni lavorativi (sabati, domeniche e festivi esclusi).` : "Nessun giorno lavorativo nell'intervallo."; };
+  [T,F,From,To].forEach(x=>x.addEventListener("input",upd)); upd();
+  m.querySelector("#fCancel").onclick=close;
+  m.querySelector("#fSave").onclick=async()=>{
+    const t=T.value, hr=TYPES[t].hourly; const h=hr? parseHM(H.value) : null;
+    if(hr && !(h>0)){ info.textContent="Inserisci un numero di ore valido."; return; }
+    const days=rangeDays(From.value,To.value||From.value,t); if(!days.length){ info.textContent="Nessun giorno lavorativo da registrare."; return; }
+    m.querySelector("#fSave").disabled=true; const gid=t==="MAL"?"g"+Date.now().toString(36):null;
+    for(const d of days){ await store.save({id:"e"+Date.now().toString(36)+Math.random().toString(36).slice(2,7), d, t, h:(hr&&F.checked&&t==="RC")?oreGiorno(d):h, n:m.querySelector("#fN").value.trim(), g:gid}); }
+    close(); toast(days.length>1?`Registrati ${days.length} giorni`:"Registrato");
+    const d=parse(days[0]); cur=new Date(d.getFullYear(),d.getMonth(),1); render();
+  };
+}
+function rangeDays(a,b,t){
+  if(!a) return []; if(b<a) [a,b]=[b,a];
+  const out=[]; const d=parse(a), e=parse(b); let guard=0;
+  while(d<=e && guard++<400){ const s=iso(d); if(isWorking(s) || t==="MAL") out.push(s); d.setDate(d.getDate()+1); }
+  if(!out.length && a===b && t==="MAL") out.push(a);
+  return out;
+}
+
+function openSettings(){
+  const y=cur.getFullYear();
+  const m=modal(`<h3>Impostazioni</h3>
+    <div class="fields"><label class="f">Ferie annue (gg)<input type="number" id="sFer" value="${settings.ferie}"></label><label class="f">Primo anno di utilizzo dell'app<input type="number" id="sStart" value="${startYear()}"></label><label class="f">Ferie dell'anno prima ancora da godere a inizio di quell'anno<input type="number" id="sAp" value="${settings.apFerie?.[startYear()]||0}"></label></div>
+    <div class="fields"><label class="f">L.937 (gg)<input type="number" id="s937" value="${settings.f937}"></label><label class="f">Art. 25 (ore)<input type="number" id="sA25" value="${settings.a25}"></label><label class="f">Art. 23 (ore)<input type="number" id="sA23" value="${settings.a23}"></label></div>
+    <div class="fields"><label class="f">Ore per giornata intera<input id="sGo" ${HMATTR} value="${fmtHM(settings.giornoOre)}"></label><label class="f">104 al mese (gg)<input type="number" id="s104" value="${settings.l104}"></label><label class="f">SW a settimana<input type="number" id="sSw" value="${settings.sw}"></label></div>
+    <div class="f" style="font-size:.78rem;color:var(--muted)">Giorni fissi di smart working (preinseriti in automatico, esclusi festivi e giorni di assenza)
+      <div class="row" id="sSwDays" style="color:var(--fg)">${[[1,"Lun"],[2,"Mar"],[3,"Mer"],[4,"Gio"],[5,"Ven"]].map(([n,l])=>`<label style="display:inline-flex;gap:5px;align-items:center"><input type="checkbox" value="${n}" style="width:auto" ${(settings.swDays||[]).map(Number).includes(n)?"checked":""}> ${l}</label>`).join("")}</div></div>
+    <label class="f">Smart working programmato a partire dal<input type="date" id="sSwDal" value="${esc(settings.swDal||"")}"></label>
+    <label class="f">Saldo iniziale recupero compensativo (ore, anche negativo)<input id="sRc" ${HMATTR} value="${fmtHM(settings.rcIniziale)}"></label>
+    <div class="fields"><label class="f">Festa patronale<select id="sPat">
+      <option value="lunset">Primo lunedì di settembre (se è l'1, il secondo)</option><option value="primadomset">Prima domenica di settembre</option><option value="lunprimadomset">Lunedì dopo la prima domenica di settembre</option><option value="fisso">Data fissa</option><option value="nessuno">Nessuna</option></select></label>
+      <label class="f">Data fissa (MM-GG)<input type="text" id="sPd" value="${esc(settings.patronoData)}" placeholder="09-07"></label></div>
+    <div class="row" style="justify-content:space-between"><div class="row"><button class="btn" id="sBackup">Backup JSON</button><button class="btn" id="sRestore">Ripristina JSON</button></div>
+    <div class="row"><button class="btn" id="sCancel">Annulla</button><button class="btn primary" id="sSave">Salva</button></div></div>`);
+  m.querySelector("#sPat").value=settings.patrono;
+  m.querySelector("#sCancel").onclick=close;
+  m.querySelector("#sBackup").onclick=()=>exportFile("json");
+  m.querySelector("#sRestore").onclick=()=>$("fileIn").click();
+  m.querySelector("#sSave").onclick=async()=>{
+    const g=id=>+m.querySelector(id).value;
+    const ns={...settings, ferie:g("#sFer"), f937:g("#s937"), a25:g("#sA25"), a23:g("#sA23"), giornoOre:parseHM(m.querySelector("#sGo").value)||6, l104:g("#s104"), sw:g("#sSw"), rcIniziale:(parseHM(m.querySelector("#sRc").value)||0),
+      patrono:m.querySelector("#sPat").value, patronoData:m.querySelector("#sPd").value.trim()||"09-07", swDays:[...m.querySelectorAll("#sSwDays input:checked")].map(i=>+i.value), swDal:m.querySelector("#sSwDal").value, annoInizio:g("#sStart"), apFerie:{...(settings.apFerie||{}), [g("#sStart")]:g("#sAp")}};
+    await store.saveSettings(ns); close(); toast("Impostazioni salvate");
+  };
+}
+
+// ---------- export ----------
+function openExport(){
+  const m=modal(`<h3>Esporta</h3>
+    <div class="list">
+      <div class="evrow"><span><b>Calendario .ics</b><br><span class="msg">Assenze e festività, da importare in Google Calendar, Outlook o sul telefono.</span></span><button class="btn" data-x="ics">Scarica</button></div>
+      <div class="evrow"><span><b>Elenco .csv</b><br><span class="msg">Tutte le registrazioni, apribile in Excel.</span></span><button class="btn" data-x="csv">Scarica</button></div>
+      <div class="evrow"><span><b>Backup .json</b><br><span class="msg">Copia completa di dati e impostazioni, per ripristino o migrazione.</span></span><button class="btn" data-x="json">Scarica</button></div>
+    </div><div class="row" style="justify-content:flex-end"><button class="btn" id="xClose">Chiudi</button></div>`);
+  m.querySelector("#xClose").onclick=close;
+  m.querySelectorAll("[data-x]").forEach(b=>b.onclick=()=>exportFile(b.dataset.x));
+}
+function buildIcs(){
+  const L=["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Calendario Lavoro//IT","CALSCALE:GREGORIAN"];
+  const stamp=new Date().toISOString().replace(/[-:]/g,"").slice(0,15)+"Z";
+  const ev=(uid,d,sum,desc)=>{ const n=parse(d); n.setDate(n.getDate()+1);
+    L.push("BEGIN:VEVENT",`UID:${uid}@calendario-lavoro`,`DTSTAMP:${stamp}`,`DTSTART;VALUE=DATE:${d.replace(/-/g,"")}`,`DTEND;VALUE=DATE:${iso(n).replace(/-/g,"")}`,`SUMMARY:${icsEsc(sum)}`); if(desc) L.push(`DESCRIPTION:${icsEsc(desc)}`); L.push("TRANSP:TRANSPARENT","END:VEVENT"); };
+  for(const e of allEvents()) ev(e.id,e.d,TYPES[e.t].n+(TYPES[e.t].hourly?" ("+fh(+e.h)+")":""),e.n);
+  const y=+todayIso.slice(0,4); for(const yy of [y-1,y,y+1]) for(const [d,n] of Object.entries(holidays(yy))) ev("fest-"+d,d,"Festivo: "+n,"");
+  L.push("END:VCALENDAR"); return L.join("\r\n");
+}
+const icsEsc = s => String(s).replace(/\\/g,"\\\\").replace(/;/g,"\\;").replace(/,/g,"\\,").replace(/\n/g,"\\n");
+function buildCsv(){
+  const rows=[["Data","Giorno","Tipo","Codice","Giorni","Ore","Nota"]];
+  for(const e of [...allEvents()].sort((a,b)=>a.d.localeCompare(b.d))){ const hr=TYPES[e.t].hourly;
+    rows.push([fmt(e.d), parse(e.d).toLocaleDateString("it-IT",{weekday:"long"}), TYPES[e.t].n, e.t, hr?"":"1", hr?String(e.h).replace(".",","):"", e.n||""]); }
+  return "\ufeff"+rows.map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(";")).join("\r\n");
+}
+async function exportFile(kind){
+  const data = kind==="ics"?buildIcs(): kind==="csv"?buildCsv(): JSON.stringify({app:"calendario-lavoro",version:1,exported:new Date().toISOString(),settings,events},null,2);
+  const filename = `calendario-lavoro-${todayIso}.${kind}`;
+  try{ const dl=await claude.use("downloads"); if(dl){ await dl.save({filename,data}); return; } }catch(e){ if(e&&e.code==="declined"||e?.code==="cancelled") return; }
+  const m=modal(`<h3>${esc(filename)}</h3><p class="msg">Il download diretto non è disponibile qui: copia il testo e salvalo in un file con questo nome.</p><textarea id="cpT" readonly></textarea><div class="row" style="justify-content:flex-end"><button class="btn" id="cpC">Copia</button><button class="btn primary" id="cpX">Chiudi</button></div>`);
+  const ta=m.querySelector("#cpT"); ta.value=data; m.querySelector("#cpX").onclick=close;
+  m.querySelector("#cpC").onclick=()=>{ navigator.clipboard?.writeText(data).then(()=>toast("Copiato"),()=>{ta.select();}); };
+}
+$("fileIn").addEventListener("change", async ev=>{
+  const f=ev.target.files[0]; ev.target.value=""; if(!f) return;
+  try{ const j=JSON.parse(await f.text()); if(!Array.isArray(j.events)) throw 0;
+    const have=new Set(events.map(e=>e.id)); let n=0;
+    for(const e of j.events){ if(!e.id||!TYPES[e.t]||!/^\d{4}-\d{2}-\d{2}$/.test(e.d)||have.has(e.id)) continue; await store.save({id:e.id,d:e.d,t:e.t,h:e.h??null,n:e.n||""}); n++; }
+    if(j.settings) await store.saveSettings({...DEF,...j.settings});
+    close(); toast(`Ripristinate ${n} registrazioni`);
+  }catch(_){ toast("File non valido: serve un backup .json di questa app"); }
+});
+
+// ---------- archiviazione ----------
+async function initStore(){
+  let db=null, uid=null;
+  try{ db=await claude.use("db"); const user=await claude.use("user"); uid=user? await user.id():null; }catch(_){ db=null; }
+  if(db && uid){
+    const c=db.collection("data/users/"+uid);
+    store={ save:e=>c.doc(e.id).set({k:"ev",d:e.d,t:e.t,h:e.h,n:e.n,g:e.g||null}), del:id=>c.doc(id).delete(), saveSettings:s=>c.doc("settings").set({k:"settings",...s}) };
+    c.onSnapshot(snap=>{
+      const ev=[]; let st=null;
+      for(const d of snap.docs){ const x=d.data()||{}; if(d.id==="settings") st=x; else if(x.k==="ev" && TYPES[x.t]) ev.push({id:d.id,d:x.d,t:x.t,h:x.h,n:x.n,g:x.g||null}); }
+      events=ev; _all=null; _fa={}; if(st){ const {k,...rest}=st; settings={...DEF,...rest}; clearFest(); }
+      $("status").textContent="dati sincronizzati online"; render();
+    }, err=>{ $("status").textContent="errore di sincronizzazione: "+(err?.message||err?.code||""); });
+  } else {
+    const KEY="calendario-lavoro-v1";
+    const load=()=>{ try{ const j=JSON.parse(localStorage.getItem(KEY)||"{}"); events=j.events||[]; settings={...DEF,...(j.settings||{})}; }catch(_){} };
+    const persist=()=>{ try{ localStorage.setItem(KEY,JSON.stringify({events,settings})); }catch(_){} };
+    load();
+    store={ save:async e=>{ events=events.filter(x=>x.id!==e.id).concat(e); persist(); render(); },
+            del:async id=>{ events=events.filter(x=>x.id!==id); persist(); render(); },
+            saveSettings:async s=>{ settings=s; clearFest(); persist(); render(); } };
+    $("status").textContent="dati salvati solo in questo browser";
+    render();
+  }
+}
+
+// ---------- inserimento rapido ----------
+let tool=null, mode="dettaglio", rangeStart=null, painting=false, painted=null, gesture=null; const undoStack=[];
+const QUICK = Object.keys(TYPES).filter(k=>!TYPES[k].hidden);
+let straOre=1;
+function quickHours(t,s){ return t==="RCP" ? (+straOre||1) : t==="RC" ? oreGiorno(s) : TYPES[t].hourly ? +settings.giornoOre : null; }
+const newId = () => "e"+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+function renderPalette(){
+  const hint = mode==="pennello" ? (tool? (tool==="DEL"?"Tocca o trascina sui giorni da svuotare.":`Tocca o trascina sui giorni: ${TYPES[tool].n}. Ritocca per togliere.`) : "Scegli una voce qui sotto.")
+    : mode==="intervallo" ? (rangeStart?`Dal ${fmt(rangeStart)}: tocca l'ultimo giorno.`:"Tocca il primo giorno dell'intervallo.")
+    : "Tocca un giorno per vedere i dettagli.";
+  $("palette").innerHTML = `<div class="pal-modes">
+    <button class="btn ${mode==="dettaglio"?"on":""}" data-m="dettaglio">Dettaglio</button>
+    <button class="btn ${mode==="pennello"?"on":""}" data-m="pennello">Singolo</button>
+    <button class="btn ${mode==="intervallo"?"on":""}" data-m="intervallo">Multipla</button>
+    <span class="pal-hint">${hint}</span>
+    <button class="btn" id="bUndo" ${undoStack.length?"":"disabled"}>↶ Annulla</button></div>
+    ${mode==="pennello"?`<div class="pal-tools"><button class="tool del ${tool==="DEL"?"on":""}" data-t="DEL">Elimina</button>${QUICK.map(k=>`<button class="tool ${tool===k?"on":""}" data-t="${k}" style="background:${col(k)}">${TYPES[k].s}</button>`).join("")}</div>`:""}${mode==="pennello"&&tool==="RCP"?`<label class="pal-hint" style="display:flex;gap:8px;align-items:center">Ore di straordinario per ogni giorno toccato <input type="number" id="stOre" ${HMATTR} value="${fmtHM(straOre)}" style="width:90px"></label>`:""}`;
+  $("palette").querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{ mode=b.dataset.m; rangeStart=null; if(mode!=="pennello") tool=null; $("days").classList.toggle("painting",false); renderPalette(); render(); });
+  $("palette").querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{ tool = tool===b.dataset.t?null:b.dataset.t; $("days").classList.toggle("painting",!!tool); renderPalette(); });
+  $("bUndo").onclick=undo;
+  const so=$("stOre"); if(so) so.oninput=()=>{ straOre=parseHM(so.value)||1; };
+}
+async function applyTool(s,ops){
+  const evs=allEvents().filter(e=>e.d===s);
+  if(tool==="DEL"){ for(const e of evs){ if(e.virtual){ const x={id:"x"+s.replace(/-/g,""),d:s,t:"SWX",h:null,n:""}; await store.save(x); ops.push({add:x.id}); } else { await store.del(e.id); ops.push({del:e}); } } return; }
+  const same=evs.find(e=>e.t===tool);
+  if(same){ if(same.virtual){ const x={id:"x"+s.replace(/-/g,""),d:s,t:"SWX",h:null,n:""}; await store.save(x); ops.push({add:x.id}); } else { await store.del(same.id); ops.push({del:same}); } return; }
+  if(!isWorking(s)){ toast("Sabato, domenica e festivi: nessun inserimento"); return; }
+  const e={id:newId(),d:s,t:tool,h:quickHours(tool,s),n:""}; await store.save(e); ops.push({add:e.id});
+}
+function pushUndo(ops){ if(ops.length){ undoStack.push(ops); if(undoStack.length>30) undoStack.shift(); renderPalette(); } }
+async function undo(){ const ops=undoStack.pop(); if(!ops) return; for(const o of ops.reverse()){ if(o.add) await store.del(o.add); else if(o.del) await store.save(o.del); } toast("Operazione annullata"); renderPalette(); }
+async function dayTap(s,fromKey){
+  if(mode==="pennello"){ if(!tool){ toast("Scegli prima una voce"); return; } if(fromKey){ const ops=[]; await applyTool(s,ops); pushUndo(ops); } return; }
+  if(mode==="intervallo"){ if(!rangeStart){ rangeStart=s; renderPalette(); render(); return; } const a=rangeStart; rangeStart=null; renderPalette(); render(); openRange(a<s?a:s, a<s?s:a); return; }
+  openDay(s);
+}
+const dayAt = (x,y) => document.elementFromPoint(x,y)?.closest?.(".day")?.dataset.d;
+$("days").addEventListener("pointerdown", ev=>{ if(mode!=="pennello"||!tool) return; const s=dayAt(ev.clientX,ev.clientY); if(!s) return;
+  ev.preventDefault(); painting=true; painted=new Set([s]); gesture=[]; const g=gesture; applyTool(s,g); });
+$("days").addEventListener("pointermove", ev=>{ if(!painting) return; const s=dayAt(ev.clientX,ev.clientY); if(s && !painted.has(s)){ painted.add(s); applyTool(s,gesture); } });
+const endPaint=()=>{ if(!painting) return; painting=false; const g=gesture; setTimeout(()=>pushUndo(g),400); };
+window.addEventListener("pointerup",endPaint); window.addEventListener("pointercancel",endPaint);
+function openRange(a,b){
+  const m=modal(`<h3>Dal ${fmt(a)} al ${fmt(b)}</h3><p class="msg">${rangeDays(a,b,"FER").length} giorni lavorativi nell'intervallo (sabati, domeniche e festivi esclusi).</p>
+    <div class="pal-tools" style="flex-wrap:wrap">${QUICK.map(k=>`<button class="tool" data-t="${k}" style="background:${col(k)}">${TYPES[k].s}</button>`).join("")}</div>
+    <div class="row" style="justify-content:space-between"><button class="btn danger" id="rDel">Svuota intervallo</button><button class="btn" id="rX">Chiudi</button></div>`);
+  m.querySelector("#rX").onclick=close;
+  m.querySelectorAll("[data-t]").forEach(btn=>btn.onclick=async()=>{ const t=btn.dataset.t; const ops=[]; close(); const gid="g"+Date.now().toString(36);
+    for(const s of rangeDays(a,b,t)){ if(allEvents().some(e=>e.d===s&&e.t===t)) continue; const e={id:newId(),d:s,t,h:quickHours(t,s),n:"",g:t==="MAL"?gid:null}; await store.save(e); ops.push({add:e.id}); }
+    pushUndo(ops); toast(`${TYPES[t].s}: ${ops.length} giorni registrati`); });
+  m.querySelector("#rDel").onclick=async()=>{ close(); const ops=[]; const prev=tool; tool="DEL";
+    for(const d=parse(a); iso(d)<=b; d.setDate(d.getDate()+1)) await applyTool(iso(d),ops);
+    tool=prev; pushUndo(ops); toast("Intervallo svuotato"); };
+}
+
+// ---------- comporto ----------
+// Logica come da prospetto: durata in mesi di calendario + giorni (30 gg = 1 mese),
+// triennio = giorni successivi a (inizio evento - 3 anni) fino alla fine del certificato.
+const FMAX=540, F100=270, F90=360;
+const minus3y = s => { const d=parse(s); d.setFullYear(d.getFullYear()-3); d.setDate(d.getDate()-1); return iso(d); }; // giorno prima dell'inizio triennio (inizio incluso)
+const addDays = (s,n) => { const d=parse(s); d.setDate(d.getDate()+n); return iso(d); };
+function addMonths(s,n){ const d=parse(s); const day=d.getDate(); const t=new Date(d.getFullYear(), d.getMonth()+n, 1); const last=new Date(t.getFullYear(), t.getMonth()+1, 0).getDate(); t.setDate(Math.min(day,last)); return iso(t); }
+function durMG(a,b){ if(b<a) return {m:0,g:0}; let m=0; while(addDays(addMonths(a,m+1),-1)<=b) m++;
+  const from=parse(addMonths(a,m)); let g=Math.round((parse(b)-from)/864e5)+1; if(g>=30){ m++; g-=30; } return {m,g}; }
+const mgDays = x => x.m*30+x.g;
+const mgFmt = n => `${Math.floor(n/30)} m ${n%30} g`;
+function malEpisodes(){
+  const L=events.filter(e=>e.t==="MAL").sort((a,b)=>a.d.localeCompare(b.d)); const eps=[];
+  for(const e of L){ const last=eps[eps.length-1];
+    if(last && last.g && e.g && last.g===e.g){ last.al=e.d; continue; }
+    if(last && !last.g && !e.g){ let ok=true; for(let s=addDays(last.al,1); s<e.d; s=addDays(s,1)) if(isWorking(s)){ ok=false; break; } if(ok){ last.al=e.d; continue; } }
+    eps.push({dal:e.d, al:e.d, g:e.g||null}); }
+  const brk=new Set(settings.cmpNew||[]);
+  eps.forEach((ep,i)=>{ const p=eps[i-1]; ep.cont = !!p && addDays(p.al,1)===ep.dal && (settings.cmpCont||[]).includes(ep.dal); ep.ref = ep.cont ? p.ref : ep.dal; ep.dur=durMG(ep.dal,ep.al); });
+  return eps;
+}
+function cumulo(eps, lim, end){ let n=0; for(const x of eps){ if(x.al<=lim || x.dal>end) continue; const a=x.dal>lim?x.dal:addDays(lim,1); const b=x.al<end?x.al:end; n+=mgDays(durMG(a,b)); } return n; }
+const pctOf = r => r<=F100?100 : r<=F90?90 : r<=FMAX?50 : 0;
+function split(before, len){ const c={100:0,90:0,50:0,0:0}; const seg=(lo,hi,k)=>{ c[k]+=Math.max(0, Math.min(before+len,hi)-Math.max(before,lo)); };
+  seg(0,F100,100); seg(F100,F90,90); seg(F90,FMAX,50); seg(FMAX,1e9,0); return c; }
+function renderComporto(){
+  const eps=malEpisodes();
+  const lim=minus3y(todayIso); const inTri=cumulo(eps, lim, todayIso); const res=Math.max(0,FMAX-inTri);
+  const seg=(from,to)=>Math.max(0,Math.min(inTri,to)-from);
+  const bar=`<div style="display:flex;height:14px;border-radius:4px;overflow:hidden;background:var(--surface2);margin:8px 0">
+    <span style="width:${seg(0,F100)/FMAX*100}%;background:var(--ok)"></span><span style="width:${seg(F100,F90)/FMAX*100}%;background:var(--warn)"></span><span style="width:${seg(F90,FMAX)/FMAX*100}%;background:var(--fest)"></span></div>
+    <div class="row msg" style="gap:14px"><span><i style="display:inline-block;width:9px;height:9px;background:var(--ok);border-radius:2px"></i> 100% · ${mgFmt(seg(0,F100))} / 9 m</span><span><i style="display:inline-block;width:9px;height:9px;background:var(--warn);border-radius:2px"></i> 90% · ${mgFmt(seg(F100,F90))} / 3 m</span><span><i style="display:inline-block;width:9px;height:9px;background:var(--fest);border-radius:2px"></i> 50% · ${mgFmt(seg(F90,FMAX))} / 6 m</span></div>`;
+  const fascia = inTri>=FMAX ? "Comporto superato" : `Prossimo giorno di malattia retribuito al ${pctOf(inTri+1)}%`;
+  $("cmpSum").innerHTML = `<div class="row" style="gap:24px">
+    <div><div class="msg">Malattia nel triennio ${fmt(addDays(lim,1))} – ${fmt(todayIso)}</div><div style="font-family:var(--f-mono);font-size:1.4rem">${mgFmt(inTri)} <small class="msg">/ 18 m</small></div></div>
+    <div><div class="msg">Residuo di comporto</div><div style="font-family:var(--f-mono);font-size:1.4rem;${res<90?"color:var(--fest)":""}">${mgFmt(res)}</div></div>
+    <div><div class="msg">Trattamento economico</div><div style="font-weight:600;padding-top:6px">${fascia}</div></div></div>${bar}
+    ${inTri>=F90 && inTri<FMAX ? `<div class="notice">Superati i 12 mesi: trattamento al 50% fino al termine del comporto.</div>` : inTri>=F100 && inTri<FMAX ? `<div class="notice">Superati i 9 mesi: trattamento al 90%.</div>` : ""}`;
+  if(!eps.length){ $("cmpTab").innerHTML=`<tbody><tr><td class="msg" style="text-align:left">Nessuna malattia registrata. Quando inserisci una malattia, qui compare il certificato con il conteggio del comporto.</td></tr></tbody>`; return; }
+  let h=`<thead><tr><th>Durata</th><th>Dal</th><th>Al</th><th>Inizio triennio</th><th>Cumulo</th><th>Tipo</th><th>Trattamento</th><th>Residuo</th></tr></thead><tbody>`;
+  const wd = s => parse(s).toLocaleDateString("it-IT",{weekday:"short"});
+  // un certificato che supera 9, 12 o 18 mesi viene diviso nel giorno in cui raggiunge la soglia (come nel prospetto)
+  const rows=[];
+  for(const ep of eps){ const l=minus3y(ep.ref); const fin=cumulo(eps,l,ep.al); let rs=ep.dal; const base=cumulo(eps,l,addDays(ep.dal,-1));
+    for(const T of [F100,F90,FMAX].filter(T=>T>base && T<fin)){ let d=rs; while(d<ep.al && cumulo(eps,l,d)<T) d=addDays(d,1); const cT=cumulo(eps,l,d); while(d<ep.al && cumulo(eps,l,addDays(d,1))===cT) d=addDays(d,1);
+      rows.push({ep, dal:rs, al:d, cum:cumulo(eps,l,d), first:rs===ep.dal}); rs=addDays(d,1); }
+    rows.push({ep, dal:rs, al:ep.al, cum:fin, first:rs===ep.dal}); }
+  for(const r of rows.slice().reverse()){ const ep=r.ep, cum=r.cum, du=durMG(r.dal,r.al), l=minus3y(ep.ref);
+    h+=`<tr><td>${du.m} m ${du.g} g</td><td>${wd(r.dal)} ${fmt(r.dal)}</td><td>${wd(r.al)} ${fmt(r.al)}</td>
+      <td>${r.first?`<button class="btn ghost" style="padding:2px 6px;font-size:.78rem;font-style:italic" data-cmp="${ep.dal}" title="${ep.cont?"Prosecuzione del certificato precedente: il triennio parte dall'inizio dell'evento. Tocca per renderlo un evento nuovo.":"Evento autonomo. Se segue senza interruzioni il certificato precedente, tocca per trattarlo come prosecuzione."}">${fmt(addDays(l,1))}${ep.cont?" ↩":""}</button>`:`<span style="font-style:italic;padding:0 6px">${fmt(addDays(l,1))}</span>`}</td>
+      <td><b>${mgFmt(cum)}</b></td><td>Malattia</td><td style="font-weight:600;color:${cum>FMAX?"var(--fest)":cum>F90?"var(--fest)":cum>F100?"var(--warn)":"var(--ok)"}">${cum>FMAX?"Oltre comporto":pctOf(cum)+"%"}</td><td>${mgFmt(Math.max(0,FMAX-cum))}</td></tr>`; }
+  $("cmpTab").innerHTML=h+"</tbody>";
+  $("cmpTab").querySelectorAll("[data-cmp]").forEach(b=>b.onclick=async()=>{ const d=b.dataset.cmp; const s=new Set(settings.cmpCont||[]);
+    const ep=eps.find(e=>e.dal===d); if(ep.cont) s.delete(d); else s.add(d); await store.saveSettings({...settings, cmpCont:[...s]}); });
+}
+
+// ---------- modifica singola voce ----------
+function openEdit(ev){
+  if(!ev) return;
+  const m=modal(`<h3>Modifica voce</h3>
+    <label class="f">Tipo<select id="eT">${Object.entries(TYPES).filter(([k,v])=>!v.hidden).map(([k,v])=>`<option value="${k}" ${k===ev.t?"selected":""}>${v.n}</option>`).join("")}</select></label>
+    <div class="fields"><label class="f">Data<input type="date" id="eD" value="${ev.d}"></label><label class="f" id="eHBox">Ore<input type="number" id="eH" ${HMATTR} value="${fmtHM(ev.h??1)}"></label></div>
+    <label class="f">Nota<input type="text" id="eN" maxlength="200" value="${esc(ev.n||"")}"></label>
+    <p class="msg" id="eInfo"></p>
+    <div class="row" style="justify-content:flex-end"><button class="btn" id="eX">Annulla</button><button class="btn primary" id="eOk">Salva modifiche</button></div>`);
+  const q=id=>m.querySelector(id); const upd=()=>{ q("#eHBox").hidden=!TYPES[q("#eT").value].hourly; }; q("#eT").oninput=upd; upd();
+  q("#eX").onclick=()=>openDay(ev.d);
+  q("#eOk").onclick=async()=>{ const t=q("#eT").value, d=q("#eD").value, hr=TYPES[t].hourly, h=parseHM(q("#eH").value);
+    if(!d){ q("#eInfo").textContent="Indica una data."; return; }
+    if(!isWorking(d) && t!=="MAL"){ q("#eInfo").textContent="Sabato, domenica e festivi non sono lavorativi: scegli un altro giorno."; return; }
+    if(hr && !(h>0)){ q("#eInfo").textContent="Inserisci un numero di ore valido."; return; }
+    const nv={id:ev.id, d, t, h:hr?h:null, n:q("#eN").value.trim(), g:t==="MAL"?(ev.t==="MAL"&&ev.d===d?ev.g:null):null};
+    await store.save(nv); pushUndo([{del:ev}]); toast("Voce modificata"); openDay(d); };
+}
+
+// ---------- ricorrenze ----------
+function openRic(){
+  const y=cur.getFullYear();
+  const tipi=Object.keys(TYPES).filter(k=>!TYPES[k].hidden);
+  const m=modal(`<h3>Inserimento ricorrente</h3>
+    <label class="f">Tipo<select id="qT">${tipi.map(k=>`<option value="${k}" ${k==="RC"?"selected":""}>${TYPES[k].n}</option>`).join("")}</select></label>
+    <div class="f">Giorni della settimana<div class="row" id="qG" style="color:var(--fg)">${[[1,"Lun"],[2,"Mar"],[3,"Mer"],[4,"Gio"],[5,"Ven"]].map(([n,l])=>`<label style="display:inline-flex;gap:5px;align-items:center"><input type="checkbox" value="${n}" style="width:auto" ${n===1?"checked":""}> ${l}</label>`).join("")}</div></div>
+    <div class="f">Mesi <span><button class="btn ghost" type="button" id="qAll" style="padding:2px 8px;font-size:.72rem">tutti</button> <button class="btn ghost" type="button" id="qNone" style="padding:2px 8px;font-size:.72rem">nessuno</button></span>
+      <div class="row" id="qM" style="color:var(--fg)">${MESI.map((n,i)=>`<label style="display:inline-flex;gap:4px;align-items:center;min-width:56px"><input type="checkbox" value="${i}" style="width:auto" ${i===cur.getMonth()?"checked":""}> ${n.slice(0,3)}</label>`).join("")}</div></div>
+    <div class="fields"><label class="f">Anno<input type="number" id="qY" value="${y}"></label><label class="f" id="qHBox">Ore per giorno<input type="number" id="qH" ${HMATTR} value="1"></label></div>
+    <label class="f">Nota<input type="text" id="qN" maxlength="200" placeholder="es. uscita anticipata"></label>
+    <p class="msg" id="qInfo"></p>
+    <div class="row" style="justify-content:flex-end"><button class="btn" id="qX">Annulla</button><button class="btn primary" id="qOk">Inserisci</button></div>`);
+  const q=id=>m.querySelector(id);
+  const dates=()=>{ const Y=+q("#qY").value, t=q("#qT").value; const gs=[...m.querySelectorAll("#qG input:checked")].map(i=>+i.value); const ms=[...m.querySelectorAll("#qM input:checked")].map(i=>+i.value);
+    const out=[]; for(const mm of ms){ const d=new Date(Y,mm,1); while(d.getMonth()===mm){ const s=iso(d); if(gs.includes(d.getDay()) && isWorking(s) && !allEvents().some(e=>e.d===s&&e.t===t)) out.push(s); d.setDate(d.getDate()+1); } } return out; };
+  const upd=()=>{ q("#qHBox").hidden=!TYPES[q("#qT").value].hourly; const n=dates().length; const h=parseHM(q("#qH").value)||0;
+    q("#qInfo").textContent = n ? `Verranno inseriti ${n} giorni${TYPES[q("#qT").value].hourly?` (${fh(n*h)} in totale)`:""}. Festivi e giorni già registrati con la stessa voce vengono saltati.` : "Nessun giorno corrisponde alla selezione."; };
+  m.addEventListener("input",upd); upd();
+  q("#qAll").onclick=()=>{ m.querySelectorAll("#qM input").forEach(i=>i.checked=true); upd(); };
+  q("#qNone").onclick=()=>{ m.querySelectorAll("#qM input").forEach(i=>i.checked=false); upd(); };
+  q("#qX").onclick=close;
+  q("#qOk").onclick=async()=>{ const t=q("#qT").value, hr=TYPES[t].hourly, h=parseHM(q("#qH").value); if(hr && !(h>0)){ q("#qInfo").textContent="Inserisci un numero di ore valido."; return; }
+    const ds=dates(); if(!ds.length) return; q("#qOk").disabled=true; const ops=[];
+    for(const d of ds){ const e={id:newId(),d,t,h:hr?h:null,n:q("#qN").value.trim()}; await store.save(e); ops.push({add:e.id}); }
+    close(); pushUndo(ops); toast(`${TYPES[t].s}: inseriti ${ds.length} giorni`); };
+}
+
+// ---------- avvio ----------
+$("prev").onclick=()=>{cur.setMonth(cur.getMonth()-1);render();};
+$("next").onclick=()=>{cur.setMonth(cur.getMonth()+1);render();};
+$("bToday").onclick=()=>{cur=new Date();cur.setDate(1);render();};
+$("bNew").onclick=()=>openForm(todayIso);
+$("bRic").onclick=openRic;
+$("bSettings").onclick=openSettings;
+$("bExport").onclick=openExport;
+// ---------- vista anno ----------
+(function(){
+  let Y=new Date().getFullYear();
+  function draw(){
+    _all=null; const byDay={}; for(const e of allEvents()) (byDay[e.d] ||= []).push(e);
+    $("yvTitle").textContent=Y; let h="";
+    for(let m=0;m<12;m++){
+      const first=new Date(Y,m,1), dim=new Date(Y,m+1,0).getDate(), off=(first.getDay()+6)%7;
+      let cells=["L","M","M","G","V","S","D"].map(x=>`<span class="h">${x}</span>`).join("")+"<span></span>".repeat(off);
+      for(let d=1; d<=dim; d++){ const s=`${Y}-${pad(m+1)}-${pad(d)}`, g=new Date(Y,m,d).getDay(), ev=byDay[s]||[];
+        let cls="", st="";
+        if(ev.length){ cls="me"; st=` style="background:${col(ev[0].t)}"`; }
+        else if(festName(s)||g===0) cls="mf"; else if(g===6) cls="ms"; else cls="mt";
+        if(s===todayIso) cls+=" td";
+        cells+=`<span class="${cls}"${st}>${d}</span>`; }
+      const isCur = Y===cur.getFullYear() && m===cur.getMonth();
+      h+=`<button class="mm${isCur?" cur":""}" data-m="${m}"><h4>${MESI[m]}</h4><div class="mg">${cells}</div></button>`;
+    }
+    $("yvGrid").innerHTML=h;
+    $("yvGrid").querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{ cur=new Date(Y,+b.dataset.m,1); closeY(); render(); });
+  }
+  function openY(){ Y=cur.getFullYear(); document.querySelector("body > .wrap").hidden=true; $("simView").hidden=true; $("yearView").hidden=false; window.scrollTo(0,0); draw(); }
+  function closeY(){ $("yearView").hidden=true; document.querySelector("body > .wrap").hidden=false; window.scrollTo(0,0); }
+  $("bYear").onclick=openY; $("mTitle").onclick=openY; $("mTitle").onkeydown=e=>{ if(e.key==="Enter"){ e.preventDefault(); openY(); } };
+  $("yvPrev").onclick=()=>{ Y--; draw(); }; $("yvNext").onclick=()=>{ Y++; draw(); }; $("yvBack").onclick=closeY;
+})();
+
+// ---------- simulatore comporto ----------
+(function(){
+  const SKEY="calendario-lavoro-sim-v1";
+  const nextMonth=()=>{ const d=new Date(); return iso(new Date(d.getFullYear(), d.getMonth()+1, 1)); };
+  const SDEF=()=>({start:nextMonth(), years:5, hist:true, sw:[1,2], mal:[3,4], fer:13, f937:4, a25:3, l104:0, lungaDal:"", lungaGg:0});
+  let P=SDEF(); try{ const j=JSON.parse(localStorage.getItem(SKEY)||"null"); if(j) P={...P,...j}; }catch(_){}
+  const save=()=>{ try{ localStorage.setItem(SKEY,JSON.stringify(P)); }catch(_){} };
+  const WD=[[1,"Lun"],[2,"Mar"],[3,"Mer"],[4,"Gio"],[5,"Ven"]];
+  const box=(id,key)=>{ $(id).innerHTML=WD.map(([n,l])=>`<label style="display:inline-flex;gap:5px;align-items:center"><input type="checkbox" value="${n}" style="width:auto" ${P[key].includes(n)?"checked":""}> ${l}</label>`).join(""); };
+  function fill(){ box("sm_sw","sw"); box("sm_mal","mal"); $("sm_start").value=P.start; $("sm_years").value=P.years; $("sm_hist").checked=P.hist;
+    $("sm_fer").value=P.fer; $("sm_937").value=P.f937; $("sm_a25").value=P.a25; $("sm_104").value=P.l104; $("sm_lungaDal").value=P.lungaDal; $("sm_lungaGg").value=P.lungaGg; }
+  function read(){ const ck=id=>[...document.querySelectorAll(`#${id} input:checked`)].map(i=>+i.value);
+    P={start:$("sm_start").value||nextMonth(), years:+$("sm_years").value, hist:$("sm_hist").checked, sw:ck("sm_sw"), mal:ck("sm_mal").filter(n=>!ck("sm_sw").includes(n)),
+      fer:+$("sm_fer").value||0, f937:+$("sm_937").value||0, a25:+$("sm_a25").value||0, l104:+$("sm_104").value||0, lungaDal:$("sm_lungaDal").value, lungaGg:+$("sm_lungaGg").value||0}; save(); }
+  // sceglie n elementi distribuiti uniformemente
+  const spread=(arr,n)=>{ const out=new Set(); n=Math.min(n,arr.length); for(let i=0;i<n;i++) out.add(arr[Math.floor((i+0.5)*arr.length/n)]); return out; };
+
+  function simulate(){
+    const start=P.start, endD=parse(start); endD.setFullYear(endD.getFullYear()+P.years); endD.setDate(endD.getDate()-1); const end=iso(endD);
+    const sick=new Set(), cover={};
+    // storico reale
+    if(P.hist){ for(const ep of malEpisodes()) for(let s=ep.dal; s<=ep.al; s=addDays(s,1)) if(s<start) sick.add(s); }
+    // candidati: giorni lavorativi della settimana tipo da coprire
+    const cand=[]; for(let s=start; s<=end; s=addDays(s,1)){ const g=parse(s).getDay(); if(P.mal.includes(g) && isWorking(s)) cand.push(s); }
+    // tutele: per anno solare (ferie, 937, art.25) e per mese (104)
+    const byY={}, byM={}; for(const s of cand){ (byY[s.slice(0,4)] ||= []).push(s); (byM[s.slice(0,7)] ||= []).push(s); }
+    const used=new Set();
+    for(const [y,list] of Object.entries(byY)){ const frac=Math.min(1, list.length / Math.max(1,(byYFull(+y)))); // anni parziali in proporzione
+      const n=Math.round((P.fer+P.f937+P.a25)*frac); spread(list,n).forEach(s=>{used.add(s); cover[s]="tutela";}); }
+    for(const list of Object.values(byM)){ const free=list.filter(s=>!used.has(s)); spread(free,P.l104).forEach(s=>{used.add(s); cover[s]="104";}); }
+    for(const s of cand) if(!used.has(s)) sick.add(s);
+    // malattia lunga
+    if(P.lungaDal && P.lungaGg>0){ for(let i=0;i<P.lungaGg;i++) sick.add(addDays(P.lungaDal,i)); }
+    // episodi con ponte su giorni non lavorativi
+    const days=[...sick].sort(); const all=[]; let epIdx=0, prev=null, posInEp=0;
+    for(const s of days){
+      if(prev){ let bridge=true, gap=[]; for(let x=addDays(prev,1); x<s; x=addDays(x,1)){ if(isWorking(x)){ bridge=false; break; } gap.push(x); }
+        if(bridge){ for(const x of gap){ posInEp++; all.push({d:x,ep:epIdx,pos:posInEp}); } } else { epIdx++; posInEp=0; } }
+      posInEp++; all.push({d:s,ep:epIdx,pos:posInEp}); prev=s; }
+    // rango nel triennio mobile
+    // certificati/episodi con la stessa regola del prospetto reale: mesi di calendario + giorni
+    const eps=[]; for(const x of all){ const e=eps[x.ep] ||= {dal:x.d, al:x.d}; e.al=x.d; }
+    for(const e of eps) e.len=mgDays(durMG(e.dal,e.al));
+    const cumS=(lim,end)=>{ let n=0; for(const x of eps){ if(x.al<=lim || x.dal>end) continue;
+      if(x.dal>lim && x.al<=end) n+=x.len; else n+=mgDays(durMG(x.dal>lim?x.dal:addDays(lim,1), x.al<end?x.al:end)); } return n; };
+    for(const e of eps){ e.cum=cumS(minus3y(e.dal), e.al); e.pct=pctOf(e.cum); }
+    for(const x of all){ x.pct=eps[x.ep].pct; }
+    const inP=all.filter(x=>x.d>=start && x.d<=end);
+    // serie mensile del cumulo
+    const months=[]; const m0=parse(start);
+    for(let k=0;k<P.years*12;k++){ const a=new Date(m0.getFullYear(), m0.getMonth()+k, 1), b=new Date(m0.getFullYear(), m0.getMonth()+k+1, 0);
+      const A=iso(a), B=iso(b), lim=minus3y(B); const M=inP.filter(x=>x.d>=A && x.d<=B);
+      const cum=cumS(lim,B);
+      months.push({key:A.slice(0,7), label:`${MESI[a.getMonth()].slice(0,3)} ${a.getFullYear()}`, gg:M.length, ep:new Set(M.map(x=>x.ep)).size,
+        p100:M.filter(x=>x.pct===100).length, p90:M.filter(x=>x.pct===90).length, p50:M.filter(x=>x.pct===50).length, oltre:M.filter(x=>x.pct===0).length,
+        tratt:M.filter(x=>x.pos<=10).length, cum}); }
+    const first=t=>{ const e=eps.find(e=>e.al>=start && e.cum>t); return e?(e.dal<start?start:e.dal):null; };
+    return {start,end,inP,months, cover, f270:first(270), f360:first(360), f540:first(540), cand:cand.length, n104:Object.values(cover).filter(v=>v==="104").length};
+  }
+  function byYFull(y){ let n=0; for(let s=`${y}-01-01`; s<=`${y}-12-31`; s=addDays(s,1)){ if(P.mal.includes(parse(s).getDay()) && isWorking(s)) n++; } return n; }
+
+  function card(lbl,val,sub,color){ return `<div style="flex:1 1 150px;min-width:0;border:1px solid var(--line);border-radius:8px;padding:10px 12px"><div class="msg">${lbl}</div><div style="font-family:${/\d/.test(val)?"var(--f-mono)":"var(--f-display)"};font-size:1.3rem;font-weight:600;${color?`color:${color}`:""}">${val}</div>${sub?`<div class="msg" style="font-size:.74rem">${sub}</div>`:""}</div>`; }
+  function draw(){
+    read(); const R=simulate(); const anni=P.years;
+    const tot=R.inP.length, eps=new Set(R.inP.map(x=>x.ep)).size, maxCum=Math.max(0,...R.months.map(m=>m.cum));
+    const c=k=>R.inP.filter(x=>x.pct===k).length; const trat=R.inP.filter(x=>x.pos<=10).length;
+    const st=maxCum>540?["Oltre il comporto","var(--fest)"]: maxCum>360?["Si scende al 50%","var(--fest)"]: maxCum>270?["Si scende al 90%","var(--warn)"]:["Sempre al 100%","var(--ok)"];
+    $("simCards").innerHTML =
+      card("Esito", st[0], R.f270?`9 mesi superati il ${fmt(R.f270)}`:`margine minimo ai 9 mesi: ${mgFmt(Math.max(0,270-maxCum))}`, st[1]) +
+      card("Malattia media", `${Math.round(tot/anni)} gg/anno`, `${Math.round(eps/anni)} episodi/anno · ${tot} gg in ${anni} anni`) +
+      card("Picco nel triennio", mgFmt(maxCum), `su 18 mesi · residuo minimo ${mgFmt(Math.max(0,540-maxCum))}`, maxCum>270?"var(--warn)":"") +
+      card("Trattenuta accessorio", `${trat} gg`, `${Math.round(trat/Math.max(1,tot)*100)}% dei giorni di malattia (primi 10 di ogni episodio)`);
+    // grafico
+    const W=820,H=300,L=52,Rm=16,T=14,B=40, n=R.months.length; const ymax=Math.max(300, Math.ceil(maxCum*1.15/30)*30);
+    const x=i=>L+(n<=1?0:i*(W-L-Rm)/(n-1)), y=v=>T+(H-T-B)*(1-v/ymax);
+    let s=`<rect x="0" y="0" width="${W}" height="${H}" fill="none"/>`;
+    for(let v=0; v<=ymax; v+=ymax>600?120:60){ s+=`<line x1="${L}" x2="${W-Rm}" y1="${y(v)}" y2="${y(v)}" stroke="var(--line)" stroke-width="1"/><text x="${L-8}" y="${y(v)+4}" text-anchor="end" font-size="11" fill="var(--muted)" font-family="IBM Plex Mono, monospace">${v/30}m</text>`; }
+    [[270,"9 mesi · 100%→90%","var(--warn)"],[360,"12 mesi · 90%→50%","var(--fest)"],[540,"18 mesi · fine comporto","var(--fest)"]].forEach(([v,l,cl])=>{ if(v<=ymax) s+=`<line x1="${L}" x2="${W-Rm}" y1="${y(v)}" y2="${y(v)}" stroke="${cl}" stroke-dasharray="5 4" stroke-width="1.5"/><text x="${W-Rm-4}" y="${y(v)-5}" text-anchor="end" font-size="11" fill="${cl}" font-weight="600">${l}</text>`; });
+    R.months.forEach((m,i)=>{ if(i%(anni>8?24:anni>4?12:6)===0||i===n-1) s+=`<text x="${x(i)}" y="${H-B+18}" text-anchor="${i===n-1?"end":i===0?"start":"middle"}" font-size="11" fill="var(--muted)">${m.label}</text>`; });
+    const pts=R.months.map((m,i)=>`${x(i)},${y(m.cum)}`).join(" ");
+    s+=`<polygon points="${x(0)},${y(0)} ${pts} ${x(n-1)},${y(0)}" fill="var(--accent)" opacity=".12"/><polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/>`;
+    const li=n-1; s+=`<circle cx="${x(li)}" cy="${y(R.months[li].cum)}" r="4" fill="var(--accent)"/><text x="${x(li)-6}" y="${y(R.months[li].cum)-10}" text-anchor="end" font-size="12" font-weight="600" fill="var(--fg)">${mgFmt(R.months[li].cum)}</text>`;
+    $("simChart").innerHTML=s;
+    // note
+    const notes=[];
+    notes.push(`Giorni da coprire nel periodo: ${R.cand}. Coperti con tutele: ${Object.keys(R.cover).length} (di cui ${R.n104} con L.104). Restano ${tot} giorni di malattia, compresi eventuali fine settimana interni agli episodi.`);
+    notes.push(`Trattamento: ${c(100)} gg al 100%, ${c(90)} gg al 90%, ${c(50)} gg al 50%${c(0)?`, <b style="color:var(--fest)">${c(0)} gg oltre il comporto</b>`:""}.`);
+    if(R.f360) notes.push(`<b>12 mesi superati il ${fmt(R.f360)}</b>: da lì trattamento al 50%.`);
+    if(R.f540) notes.push(`<b style="color:var(--fest)">Comporto esaurito il ${fmt(R.f540)}.</b>`);
+    $("simNotes").innerHTML=`<div class="list">${notes.map(t=>`<div class="msg" style="font-size:.84rem">${t}</div>`).join("")}</div><p class="msg" style="font-size:.74rem;margin-top:8px">Stesso metodo del prospetto reale: ogni episodio è misurato in mesi di calendario più giorni, quindi febbraio da 28 o 29 giorni e i mesi da 31 valgono un mese intero; il cumulo del triennio somma gli episodi e converte ogni 30 giorni residui in un mese. La percentuale di ogni episodio dipende dal cumulo raggiunto alla sua fine.</p>`;
+    // tabella mensile
+    let h=`<thead><tr><th>Mese</th><th>Malattia</th><th>Episodi</th><th>100%</th><th>90%</th><th>50%</th><th>Oltre</th><th>Con trattenuta</th><th>Cumulo triennio</th></tr></thead><tbody>`;
+    for(const m of R.months){ const col_=m.cum>540?"var(--fest)":m.cum>360?"var(--fest)":m.cum>270?"var(--warn)":"";
+      h+=`<tr><td style="text-transform:capitalize">${m.label}</td><td>${m.gg||"·"}</td><td>${m.ep||"·"}</td><td>${m.p100||"·"}</td><td>${m.p90||"·"}</td><td>${m.p50||"·"}</td><td>${m.oltre||"·"}</td><td>${m.tratt||"·"}</td><td style="font-weight:600;${col_?`color:${col_}`:""}">${mgFmt(m.cum)}</td></tr>`; }
+    $("simTab").innerHTML=h+"</tbody>";
+  }
+  function open(){ fill(); document.querySelector("body > .wrap").hidden=true; $("simView").hidden=false; window.scrollTo(0,0); draw(); }
+  function closeSim(){ $("simView").hidden=true; document.querySelector("body > .wrap").hidden=false; }
+  $("bSim").onclick=open; $("simBack").onclick=closeSim;
+  $("simView").addEventListener("input", e=>{ if(e.target.closest("aside")) draw(); });
+  $("sm_reset").onclick=()=>{ P=SDEF(); save(); fill(); draw(); };
+})();
+
+renderLegend(); renderPalette(); render();
+// store temporaneo finché il database non risponde
+store={save:async()=>toast("Attendi il caricamento dei dati"),del:async()=>{},saveSettings:async()=>{}};
+if(window.claude && claude.use) initStore(); else { window.claude={use:async()=>null}; initStore(); }
+})();
+</script>
+</body></html>

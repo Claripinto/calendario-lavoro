@@ -1,0 +1,51 @@
+name: Compila APK
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - capacitor.config.json
+      - package.json
+      - assets/**
+      - www/**
+      - .github/workflows/build-apk.yml
+permissions:
+  contents: write
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Chiave di firma (dai Secrets)
+        env:
+          KS: ${{ secrets.DEBUG_KEYSTORE_B64 }}
+        run: |
+          if [ -z "$KS" ]; then echo "::error::Manca il secret DEBUG_KEYSTORE_B64"; exit 1; fi
+          mkdir -p ~/.android
+          echo "$KS" | base64 -d > ~/.android/debug.keystore
+      - name: Dipendenze
+        run: npm install
+      - name: Progetto Android
+        run: |
+          npx cap add android
+          npx @capacitor/assets generate --android --iconBackgroundColor '#1d5a86' --splashBackgroundColor '#f3f5f7'
+          npx cap sync android
+      - name: Compila
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+          cp app/build/outputs/apk/debug/app-debug.apk ../CalendarioLavoro.apk
+      - name: Pubblica nella pagina Release (link diretto, senza zip)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete apk --yes --cleanup-tag || true
+          gh release create apk CalendarioLavoro.apk --title "Calendario Lavoro (APK)" --notes "Installa questo file sul telefono. L'app poi si aggiorna da sola."

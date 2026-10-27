@@ -1,0 +1,29 @@
+name: Pubblica app (aggiornamento automatico)
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - web/**
+      - .github/workflows/pubblica-app.yml
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.dep.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: web
+      - id: dep
+        uses: actions/deploy-pages@v4
