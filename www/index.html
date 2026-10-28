@@ -119,6 +119,13 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .day.ot::after{border-top-width:3px}.day.ob::after{border-bottom-width:3px}.day.ol::after{border-left-width:3px}.day.or::after{border-right-width:3px}
 .day.out{opacity:.32}
 @media (max-width:560px){
+  .day .num{font-size:1.02rem}
+  .day{padding:3px 2px}
+  .band{padding:3px 2px}
+  .day .chip{font-size:.67rem;font-weight:600;padding:0;letter-spacing:-.03em;line-height:1.15}
+  .day.filled .chip{background:none!important}
+  .day .fname{font-size:.68rem;line-height:1.12}
+  .satl{font-size:.64rem;letter-spacing:-.02em}
   header.top{display:none}
   #meseView .wrap,#meseView{margin-inline:calc(-1 * max(16px, env(safe-area-inset-left,0px)) + 6px)}
   .calpanel{border:0;background:transparent;border-radius:0}
@@ -893,7 +900,7 @@ function planNotifiche(){ if(!LN()) return; clearTimeout(planT); planT=setTimeou
 setTimeout(()=>{ if(LN()){ try{ Capacitor.Plugins.LocalNotifications.addListener("localNotificationActionPerformed", a=>{ const d=a&&a.notification&&a.notification.extra&&a.notification.extra.d; if(d){ cur=new Date(+d.slice(0,4),+d.slice(5,7)-1,1); render(); if(a.notification.id%10===0) setTimeout(()=>window.__ingresso(d),300); } }); }catch(_){} } },0);
 
 // ---------- aggiornamenti ----------
-const APP_VER="28/10 01:33";
+const APP_VER="28/10 01:39";
 const SITE="https://claripinto.github.io/calendario-lavoro/";
 const APK_URL="https://github.com/Claripinto/calendario-lavoro/releases/latest/download/CalendarioLavoro.apk";
 const isNative=()=>!!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform());
