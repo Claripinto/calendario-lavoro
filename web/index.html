@@ -60,6 +60,17 @@ h1{font-family:var(--f-display);font-size:1.6rem;margin:0;letter-spacing:-.01em;
 .day.work:not(.filled) .num{color:var(--work-fg)}
 .day.sat{background:var(--sat-bg)}
 .day.sat:not(.filled) .num{color:var(--sat-fg)}
+.tabbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:21;background:var(--surface)}
+.tabin{max-width:1240px;margin:0 auto;display:flex;align-items:stretch;padding-left:max(8px,env(safe-area-inset-left,0px));padding-right:max(8px,env(safe-area-inset-right,0px))}
+.tab{flex:1;font:inherit;font-weight:600;font-size:.95rem;text-transform:uppercase;letter-spacing:.04em;background:none;border:0;border-bottom:3px solid transparent;color:var(--muted);padding:13px 6px 10px;cursor:pointer}
+.tab.on{color:var(--fg);border-bottom-color:var(--accent)}
+.tab.tabset{flex:0 0 52px;display:flex;align-items:center;justify-content:center}
+.calpanel{max-width:760px;margin:0 auto}
+@media (max-width:560px){header.top h1{font-size:1.25rem} header.top .sub{font-size:.75rem} header.top{margin-bottom:10px}}
+.riep-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px;align-items:start}
+.riep-grid .panel{padding:14px}.riep-grid h3{font-family:var(--f-display);font-size:1rem;margin:0 0 10px}
+#riepView .tablewrap,#riepView #comporto{margin-top:16px}
 .yv-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 @media (min-width:700px){.yv-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (min-width:1050px){.yv-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
@@ -148,31 +159,29 @@ textarea{font-family:var(--f-mono);font-size:.75rem;min-height:180px}
 @media (prefers-reduced-motion:no-preference){.day{transition:box-shadow .12s}}
 </style>
 
+<nav class="tabbar" id="tabbar"><div class="tabin">
+  <button class="tab on" data-tab="mese" id="tMese">Mese</button><button class="tab" data-tab="anno" id="tAnno">Anno</button><button class="tab" data-tab="riep">Riepilogo</button>
+  <button class="tab tabset" id="bSettings" aria-label="Impostazioni" title="Impostazioni"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M19.4 13a7.6 7.6 0 0 0 0-2l2.1-1.6-2-3.5-2.5 1a7.4 7.4 0 0 0-1.7-1L15 3.3h-4l-.4 2.6a7.4 7.4 0 0 0-1.7 1l-2.5-1-2 3.5L6.6 11a7.6 7.6 0 0 0 0 2l-2.1 1.6 2 3.5 2.5-1a7.4 7.4 0 0 0 1.7 1l.4 2.6h4l.4-2.6a7.4 7.4 0 0 0 1.7-1l2.5 1 2-3.5zM12 15.5a3.5 3.5 0 1 1 0-7 3.5 3.5 0 0 1 0 7z"/></svg></button>
+</div></nav>
 <div class="wrap">
   <header class="top">
     <div>
       <h1>Calendario Lavoro</h1>
       <div class="sub">Ferie, permessi, festività · Lun–Ven · patrono di Brindisi · <span id="status" class="status">caricamento…</span></div>
     </div>
-    <div class="row">
-      <button class="btn primary" id="bNew">+ Registra assenza</button>
-      <button class="btn" id="bRic">↻ Ricorrenza</button>
-      <button class="btn" id="bExport">Esporta</button>
-      <button class="btn" id="bSim">Simulatore comporto</button>
-      <button class="btn" id="bSettings">Impostazioni</button>
-    </div>
+    <div hidden><button id="bNew"></button><button id="bRic"></button><button id="bExport"></button><button id="bSim"></button></div>
   </header>
 
+  <div id="meseView">
   <div id="oggiRC"></div>
-  <div class="grid">
-    <section class="panel">
+    <section class="panel calpanel">
       <div class="cal-head">
         <div class="row">
           <button class="btn ghost" id="prev" aria-label="Mese precedente">‹</button>
           <h2 id="mTitle" role="button" tabindex="0" title="Vedi tutto l'anno" style="cursor:pointer"></h2>
           <button class="btn ghost" id="next" aria-label="Mese successivo">›</button>
         </div>
-        <div class="row"><button class="btn" id="bYear">Anno</button><button class="btn" id="bToday">Oggi</button></div>
+        <div class="row"><button class="btn" id="bYear" hidden>Anno</button><button class="btn" id="bToday">Oggi</button></div>
       </div>
       <div class="dow"><div>Lun</div><div>Mar</div><div>Mer</div><div>Gio</div><div>Ven</div><div>Sab</div><div>Dom</div></div>
       <div class="days" id="days"></div>
@@ -180,12 +189,15 @@ textarea{font-family:var(--f-mono);font-size:.75rem;min-height:180px}
       <div class="legend" id="legend" hidden></div>
     </section>
 
-    <aside class="side">
+  </div>
+
+  <div id="riepView" hidden>
+    <div class="cal-head panel" style="margin-bottom:16px"><div class="row"><button class="btn ghost" id="rPrev" aria-label="Mese precedente">‹</button><h2 id="rTitle"></h2><button class="btn ghost" id="rNext" aria-label="Mese successivo">›</button></div></div>
+    <div class="riep-grid">
       <div class="panel"><h3 id="balTitle">Saldi</h3><div class="bal" id="bal"></div></div>
       <div class="panel"><h3>Questo mese</h3><div class="bal" id="month"></div></div>
       <div class="panel"><h3>Prossime festività</h3><div class="list" id="nextFest"></div></div>
-    </aside>
-  </div>
+    </div>
 
   <section class="panel tablewrap" style="padding:14px">
     <h3 style="font-family:var(--f-display);margin:0 0 8px" id="yTitle">Riepilogo annuale</h3>
@@ -199,6 +211,7 @@ textarea{font-family:var(--f-mono);font-size:.75rem;min-height:180px}
     <div id="cmpSum"></div>
     <div style="overflow-x:auto;margin-top:12px"><table id="cmpTab"></table></div>
   </section>
+  </div>
 </div>
 
 <section id="yearView" hidden>
@@ -370,7 +383,7 @@ const fh = h => { const v=Math.round(h*100)/100; const hh=Math.trunc(v), mm=Math
 const $ = id => document.getElementById(id);
 function render(){
   const y=cur.getFullYear(), m=cur.getMonth();
-  $("mTitle").textContent = `${MESI[m]} ${y}`;
+  $("mTitle").textContent = `${MESI[m]} ${y}`; $("tMese").textContent=MESI[m]; $("tAnno").textContent=y; $("rTitle").textContent=`Riepilogo ${MESI[m]} ${y}`;
   const first=new Date(y,m,1); const start=new Date(first); start.setDate(1-((first.getDay()+6)%7));
   _all=null; _fa={};
   const byDay={}; for(const e of allEvents()){ (byDay[e.d] ||= []).push(e); }
@@ -531,6 +544,7 @@ function openSettings(){
     <div class="fields"><label class="f">Ferie annue (gg)<input type="number" id="sFer" value="${settings.ferie}"></label><label class="f">Primo anno d'uso<input type="number" id="sStart" value="${startYear()}"></label><label class="f">Ferie residue anno prec.<input type="number" id="sAp" value="${settings.apFerie?.[startYear()]||0}"></label></div>
     <div class="fields"><label class="f">L.937 (gg)<input type="number" id="s937" value="${settings.f937}"></label><label class="f">Art. 25 (ore)<input type="number" id="sA25" value="${settings.a25}"></label><label class="f">Art. 23 (ore)<input type="number" id="sA23" value="${settings.a23}"></label></div>
     <div class="fields"><label class="f">Ore giornata intera<input id="sGo" ${HMATTR} value="${fmtHM(settings.giornoOre)}"></label><label class="f">104 al mese (gg)<input type="number" id="s104" value="${settings.l104}"></label><label class="f">SW a settimana<input type="number" id="sSw" value="${settings.sw}"></label></div>
+    <div class="row"><button class="btn" type="button" id="sExp">Esporta</button><button class="btn" type="button" id="sSim">Simulatore comporto</button></div>
     <div class="row" style="justify-content:space-between;border:1px solid var(--line);border-radius:6px;padding:8px 10px"><span class="msg" id="sAccInfo"></span><button class="btn" type="button" id="sAcc">Accordi smart working</button></div>
     <label class="f">Saldo iniziale recupero compensativo (ore, anche negativo)<input id="sRc" ${HMATTR} value="${fmtHM(settings.rcIniziale)}"></label>
     <div class="fields"><label class="f">Festa patronale<select id="sPat">
@@ -544,6 +558,7 @@ function openSettings(){
   m.querySelector("#sRestore").onclick=()=>$("fileIn").click();
   { const a=accordoDi(todayIso); m.querySelector("#sAccInfo").textContent = a ? `In vigore: ${giorniTxt(a.giorni)} · ${a.al?"scade il "+fmt(a.al):"a tempo indeterminato"}` : "Nessun accordo in vigore"; }
   m.querySelector("#sAcc").onclick=openAccordi;
+  m.querySelector("#sExp").onclick=()=>{ close(); openExport(); }; m.querySelector("#sSim").onclick=()=>{ close(); $("bSim").click(); };
   m.querySelector("#sUpd").onclick=()=>checkUpdates(true, m.querySelector("#sUpdInfo"));
   m.querySelector("#sTema").value=getTema(); m.querySelector("#sTema").onchange=e=>applyTema(e.target.value);
   m.querySelector("#sSave").onclick=async()=>{
@@ -656,12 +671,13 @@ function renderPalette(){
     <button class="btn ${mode==="dettaglio"?"on":""}" data-m="dettaglio">Dettaglio</button>
     <button class="btn ${mode==="pennello"?"on":""}" data-m="pennello">Singolo</button>
     <button class="btn ${mode==="intervallo"?"on":""}" data-m="intervallo">Multipla</button>
+    <button class="btn" id="bRicP">↻ Ricorrenza</button>
     <span class="pal-hint">${hint}</span>
     <button class="btn" id="bUndo" ${undoStack.length?"":"disabled"}>↶ Annulla</button></div>
     ${mode==="pennello"?`<div class="pal-tools"><button class="tool del ${tool==="DEL"?"on":""}" data-t="DEL">Elimina</button>${QUICK.map(k=>`<button class="tool ${tool===k?"on":""}" data-t="${k}" style="background:${col(k)}">${TYPES[k].s}</button>`).join("")}</div>`:""}${mode==="pennello"&&tool==="RCP"?`<label class="pal-hint" style="display:flex;gap:8px;align-items:center">Ore di straordinario per ogni giorno toccato <input type="number" id="stOre" ${HMATTR} value="${fmtHM(straOre)}" style="width:90px"></label>`:""}`;
   $("palette").querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{ mode=b.dataset.m; rangeStart=null; if(mode!=="pennello") tool=null; $("days").classList.toggle("painting",false); renderPalette(); render(); });
   $("palette").querySelectorAll("[data-t]").forEach(b=>b.onclick=()=>{ tool = tool===b.dataset.t?null:b.dataset.t; $("days").classList.toggle("painting",!!tool); renderPalette(); });
-  $("bUndo").onclick=undo;
+  $("bUndo").onclick=undo; $("bRicP").onclick=()=>openRic();
   const so=$("stOre"); if(so) so.oninput=()=>{ straOre=parseHM(so.value)||1; };
 }
 async function applyTool(s,ops){
@@ -807,7 +823,7 @@ $("prev").onclick=()=>{cur.setMonth(cur.getMonth()-1);render();};
 $("next").onclick=()=>{cur.setMonth(cur.getMonth()+1);render();};
 $("bToday").onclick=()=>{cur=new Date();cur.setDate(1);render();};
 $("bNew").onclick=()=>openForm(todayIso);
-$("bRic").onclick=openRic;
+
 $("bSettings").onclick=openSettings;
 $("bExport").onclick=openExport;
 // ---------- recupero: ingresso, uscita e notifiche ----------
@@ -853,7 +869,7 @@ function planNotifiche(){ if(!LN()) return; clearTimeout(planT); planT=setTimeou
 setTimeout(()=>{ if(LN()){ try{ Capacitor.Plugins.LocalNotifications.addListener("localNotificationActionPerformed", a=>{ const d=a&&a.notification&&a.notification.extra&&a.notification.extra.d; if(d){ cur=new Date(+d.slice(0,4),+d.slice(5,7)-1,1); render(); if(a.notification.id%10===0) setTimeout(()=>window.__ingresso(d),300); } }); }catch(_){} } },0);
 
 // ---------- aggiornamenti ----------
-const APP_VER="28/10 00:21";
+const APP_VER="28/10 01:21";
 const SITE="https://claripinto.github.io/calendario-lavoro/";
 const APK_URL="https://github.com/Claripinto/calendario-lavoro/releases/latest/download/CalendarioLavoro.apk";
 const isNative=()=>!!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform());
@@ -961,6 +977,18 @@ let lastSwipe=0;
   box.addEventListener("touchend",end); box.addEventListener("touchcancel",end);
 })();
 
+// ---------- schede Mese / Anno / Riepilogo ----------
+let tabNow="mese";
+function setTab(t){ tabNow=t;
+  document.querySelectorAll("#tabbar .tab[data-tab]").forEach(b=>b.classList.toggle("on", b.dataset.tab===t));
+  $("yearView").hidden=true; $("simView").hidden=true; document.querySelector("body > .wrap").hidden=false;
+  $("meseView").hidden = t!=="mese"; $("riepView").hidden = t!=="riep";
+  if(t==="anno") $("bYear").click();
+  window.scrollTo(0,0); }
+window.setTab=setTab;
+document.querySelectorAll("#tabbar .tab[data-tab]").forEach(b=>b.onclick=()=>setTab(b.dataset.tab));
+$("rPrev").onclick=()=>{ cur.setMonth(cur.getMonth()-1); render(); }; $("rNext").onclick=()=>{ cur.setMonth(cur.getMonth()+1); render(); };
+
 // ---------- vista anno ----------
 (function(){
   let Y=new Date().getFullYear();
@@ -980,12 +1008,12 @@ let lastSwipe=0;
       h+=`<button class="mm${isCur?" cur":""}" data-m="${m}"><h4>${MESI[m]}</h4><div class="mg">${cells}</div></button>`;
     }
     $("yvGrid").innerHTML=h;
-    $("yvGrid").querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{ cur=new Date(Y,+b.dataset.m,1); closeY(); render(); });
+    $("yvGrid").querySelectorAll("[data-m]").forEach(b=>b.onclick=()=>{ cur=new Date(Y,+b.dataset.m,1); closeY(); setTab("mese"); render(); });
   }
-  function openY(){ Y=cur.getFullYear(); document.querySelector("body > .wrap").hidden=true; $("simView").hidden=true; $("yearView").hidden=false; window.scrollTo(0,0); draw(); }
+  function openY(){ Y=cur.getFullYear(); document.querySelectorAll("#tabbar .tab[data-tab]").forEach(b=>b.classList.toggle("on", b.dataset.tab==="anno")); document.querySelector("body > .wrap").hidden=true; $("simView").hidden=true; $("yearView").hidden=false; window.scrollTo(0,0); draw(); }
   function closeY(){ $("yearView").hidden=true; document.querySelector("body > .wrap").hidden=false; window.scrollTo(0,0); }
   $("bYear").onclick=openY; $("mTitle").onclick=openY; $("mTitle").onkeydown=e=>{ if(e.key==="Enter"){ e.preventDefault(); openY(); } };
-  $("yvPrev").onclick=()=>{ Y--; draw(); }; $("yvNext").onclick=()=>{ Y++; draw(); }; $("yvBack").onclick=closeY;
+  $("yvPrev").onclick=()=>{ Y--; draw(); }; $("yvNext").onclick=()=>{ Y++; draw(); }; $("yvBack").onclick=()=>{ closeY(); setTab("mese"); };
 })();
 
 // ---------- simulatore comporto ----------
@@ -1085,7 +1113,7 @@ let lastSwipe=0;
     $("simTab").innerHTML=h+"</tbody>";
   }
   function open(){ fill(); document.querySelector("body > .wrap").hidden=true; $("simView").hidden=false; window.scrollTo(0,0); draw(); }
-  function closeSim(){ $("simView").hidden=true; document.querySelector("body > .wrap").hidden=false; }
+  function closeSim(){ setTimeout(()=>setTab(tabNow),0); $("simView").hidden=true; document.querySelector("body > .wrap").hidden=false; }
   $("bSim").onclick=open; $("simBack").onclick=closeSim;
   $("simView").addEventListener("input", e=>{ if(e.target.closest("aside")) draw(); });
   $("sm_reset").onclick=()=>{ P=SDEF(); save(); fill(); draw(); };
