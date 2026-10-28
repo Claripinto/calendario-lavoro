@@ -73,6 +73,15 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .riep-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px;align-items:start}
 .riep-grid .panel{padding:14px}.riep-grid h3{font-family:var(--f-display);font-size:1rem;margin:0 0 10px}
 #riepView .tablewrap,#riepView #comporto{margin-top:16px}
+.yv-years{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:4px 0 18px}
+.pill{font:inherit;font-size:1.15rem;font-weight:500;padding:10px;border-radius:999px;border:2px solid var(--line);background:var(--surface);color:var(--fg);cursor:pointer}
+.pill:active{background:var(--surface2)}
+#yearView .mm{border:0;background:transparent;padding:0}
+#yearView .mm h4{text-transform:uppercase;font-family:var(--f-body);font-weight:700;letter-spacing:.02em;font-size:.95rem}
+#yearView .mg{gap:0}
+#yearView .mg .h{border:0}
+#yearView .mg span[class]:not(.h){box-shadow:inset 0 0 0 .5px rgba(0,0,0,.25);line-height:2.1;border-radius:0}
+#yearView .mg .h{line-height:1.8}
 .yv-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 @media (min-width:700px){.yv-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (min-width:1050px){.yv-grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
@@ -233,11 +242,8 @@ textarea{font-family:var(--f-mono);font-size:.75rem;min-height:180px}
 
 <section id="yearView" hidden>
   <div class="wrap">
-    <header class="top">
-      <div class="row" style="gap:10px"><button class="btn" id="yvPrev" aria-label="Anno precedente">‹</button><h1 id="yvTitle" style="min-width:90px;text-align:center"></h1><button class="btn" id="yvNext" aria-label="Anno successivo">›</button></div>
-      <button class="btn" id="yvBack">← Torna al mese</button>
-    </header>
-    <p class="msg" style="margin:0 0 12px">Tocca un mese per aprirlo.</p>
+    <div class="yv-years"><button class="pill" id="yvPrev"></button><button class="pill" id="yvNext"></button></div>
+    <h1 id="yvTitle" hidden></h1><button id="yvBack" hidden></button>
     <div class="yv-grid" id="yvGrid"></div>
   </div>
 </section>
@@ -887,7 +893,7 @@ function planNotifiche(){ if(!LN()) return; clearTimeout(planT); planT=setTimeou
 setTimeout(()=>{ if(LN()){ try{ Capacitor.Plugins.LocalNotifications.addListener("localNotificationActionPerformed", a=>{ const d=a&&a.notification&&a.notification.extra&&a.notification.extra.d; if(d){ cur=new Date(+d.slice(0,4),+d.slice(5,7)-1,1); render(); if(a.notification.id%10===0) setTimeout(()=>window.__ingresso(d),300); } }); }catch(_){} } },0);
 
 // ---------- aggiornamenti ----------
-const APP_VER="28/10 01:26";
+const APP_VER="28/10 01:33";
 const SITE="https://claripinto.github.io/calendario-lavoro/";
 const APK_URL="https://github.com/Claripinto/calendario-lavoro/releases/latest/download/CalendarioLavoro.apk";
 const isNative=()=>!!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform());
@@ -1012,7 +1018,7 @@ $("rPrev").onclick=()=>{ cur.setMonth(cur.getMonth()-1); render(); }; $("rNext")
   let Y=new Date().getFullYear();
   function draw(){
     _all=null; const byDay={}; for(const e of allEvents()) (byDay[e.d] ||= []).push(e);
-    $("yvTitle").textContent=Y; let h="";
+    $("yvTitle").textContent=Y; $("yvPrev").textContent=Y-1; $("yvNext").textContent=Y+1; $("tAnno").textContent=Y; let h="";
     for(let m=0;m<12;m++){
       const first=new Date(Y,m,1), dim=new Date(Y,m+1,0).getDate(), off=(first.getDay()+6)%7;
       let cells=["L","M","M","G","V","S","D"].map(x=>`<span class="h">${x}</span>`).join("")+"<span></span>".repeat(off);
