@@ -7,7 +7,7 @@
 :root{
   --bg:#f3f5f7; --surface:#ffffff; --surface2:#e9edf1; --line:#d5dce3;
   --fg:#17212b; --muted:#5b6876; --accent:#1d5a86; --accent-fg:#ffffff;
-  --fest:#c0392b; --fest-bg:#fbeceb; --fest-cell:#a8233a; --sat-bg:#f5e1e5; --sat-fg:#a8233a; --work-bg:#fbf4d9; --work-fg:#2b2615; --weekend:#eef1f4; --today:#1d5a86;
+  --fest:#c0392b; --fest-bg:#fbeceb; --fest-cell:#a8233a; --edge:#17212b; --sat-bg:#f5e1e5; --sat-fg:#a8233a; --work-bg:#fbf4d9; --work-fg:#2b2615; --weekend:#eef1f4; --today:#1d5a86;
   --warn:#a15c00; --warn-bg:#fff3dc; --ok:#2e7d5b;
   --c-FER:#2e7d5b; --c-F937:#6d8a1e; --c-A25:#7b4fd6; --c-A23:#c26a06; --c-RC:#0e7490; --c-RCP:#55687a;
   --c-L104:#c2296f; --c-SW:#2f62d1; --c-MAL:#8a3b12; --c-ALT:#6b7280;
@@ -16,6 +16,7 @@
   --f-mono:"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
 }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --edge:#e5ebf0;
   --bg:#11171d; --surface:#18212a; --surface2:#212c37; --line:#2e3b48;
   --fg:#e5ebf0; --muted:#93a1af; --accent:#6aaedc; --accent-fg:#0d1720;
   --fest:#ff7b6b; --fest-bg:#3a1f1c; --weekend:#151d24; --today:#6aaedc;
@@ -23,6 +24,7 @@
   --c-FER:#4fb886; --c-F937:#a5c44a; --c-A25:#a98bf5; --c-A23:#f0a24a; --c-RC:#38b6d0; --c-RCP:#90a3b5;
   --c-L104:#ee6aa6; --c-SW:#6f97f0; --c-MAL:#d9824f; --c-ALT:#9aa3ae; color-scheme:dark }}
 :root[data-theme="dark"]{
+  --edge:#e5ebf0;
   --bg:#11171d; --surface:#18212a; --surface2:#212c37; --line:#2e3b48;
   --fg:#e5ebf0; --muted:#93a1af; --accent:#6aaedc; --accent-fg:#0d1720;
   --fest:#ff7b6b; --fest-bg:#3a1f1c; --weekend:#151d24; --today:#6aaedc;
@@ -101,7 +103,20 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .tool.del{background:var(--surface);color:var(--fest);border-color:var(--fest);text-shadow:none}
 .tool.del.on{background:var(--fest);color:#fff}
 .days{touch-action:pan-y;will-change:transform;transform-origin:50% 50%;backface-visibility:hidden}
-section.panel:has(> .days){perspective:1100px}
+.calstage{perspective:1100px;overflow:hidden}
+#calRot{transform-origin:50% 50%;backface-visibility:hidden;will-change:transform}
+.day{position:relative}
+.day.ot::after,.day.ob::after,.day.ol::after,.day.or::after{content:"";position:absolute;inset:-1px;pointer-events:none;border:0 solid var(--edge);z-index:3}
+.day.ot::after{border-top-width:3px}.day.ob::after{border-bottom-width:3px}.day.ol::after{border-left-width:3px}.day.or::after{border-right-width:3px}
+.day.out{opacity:.32}
+@media (max-width:560px){
+  header.top{display:none}
+  #meseView .wrap,#meseView{margin-inline:calc(-1 * max(16px, env(safe-area-inset-left,0px)) + 6px)}
+  .calpanel{border:0;background:transparent;border-radius:0}
+  .calpanel .cal-head{border-bottom:0;padding:8px 4px}
+  .days{grid-auto-rows:minmax(64px, calc((100dvh - 290px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px)) / 6))}
+  .dow div{border-bottom:0;text-align:center;font-weight:600}
+}
 .days.painting{touch-action:none;user-select:none;-webkit-user-select:none}
 .day.sel{box-shadow:inset 0 0 0 3px var(--accent)!important}
 .band{flex:1 1 0;padding:4px 6px;display:flex;flex-direction:column;gap:3px;min-width:0;min-height:0}
@@ -183,8 +198,10 @@ textarea{font-family:var(--f-mono);font-size:.75rem;min-height:180px}
         </div>
         <div class="row"><button class="btn" id="bYear" hidden>Anno</button><button class="btn" id="bToday">Oggi</button></div>
       </div>
+      <div class="calstage"><div id="calRot">
       <div class="dow"><div>Lun</div><div>Mar</div><div>Mer</div><div>Gio</div><div>Ven</div><div>Sab</div><div>Dom</div></div>
       <div class="days" id="days"></div>
+      </div></div>
       <div class="palette" id="palette"></div>
       <div class="legend" id="legend" hidden></div>
     </section>
@@ -390,10 +407,11 @@ function render(){
   const box=$("days"); box.textContent="";
   for(let i=0;i<42;i++){
     const d=new Date(start); d.setDate(start.getDate()+i); const s=iso(d);
-    if(i>=35 && d.getMonth()!==m) break;
     const el=document.createElement("div"); el.className="day"; el.tabIndex=0; el.setAttribute("role","button");
     const g=d.getDay(); const fn=festName(s);
     if(d.getMonth()!==m) el.classList.add("out");
+    else { const inM=k=>{ if(k<0||k>41) return false; const x=new Date(start); x.setDate(start.getDate()+k); return x.getMonth()===m; };
+      const c=i%7; if(!inM(i-7)) el.classList.add("ot"); if(!inM(i+7)) el.classList.add("ob"); if(c===0||!inM(i-1)) el.classList.add("ol"); if(c===6||!inM(i+1)) el.classList.add("or"); }
     if(g===0||g===6) el.classList.add("we");
     if(g===0) el.classList.add("fest");
     if(g===6 && !fn) el.classList.add("sat");
@@ -869,7 +887,7 @@ function planNotifiche(){ if(!LN()) return; clearTimeout(planT); planT=setTimeou
 setTimeout(()=>{ if(LN()){ try{ Capacitor.Plugins.LocalNotifications.addListener("localNotificationActionPerformed", a=>{ const d=a&&a.notification&&a.notification.extra&&a.notification.extra.d; if(d){ cur=new Date(+d.slice(0,4),+d.slice(5,7)-1,1); render(); if(a.notification.id%10===0) setTimeout(()=>window.__ingresso(d),300); } }); }catch(_){} } },0);
 
 // ---------- aggiornamenti ----------
-const APP_VER="28/10 01:21";
+const APP_VER="28/10 01:26";
 const SITE="https://claripinto.github.io/calendario-lavoro/";
 const APK_URL="https://github.com/Claripinto/calendario-lavoro/releases/latest/download/CalendarioLavoro.apk";
 const isNative=()=>!!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform());
@@ -961,19 +979,19 @@ function editAccordo(a){
 // ---------- scorrimento col dito tra i mesi ----------
 let lastSwipe=0;
 (function(){
-  const box=$("days"); let x0=0,y0=0,dx=0,on=false,horiz=null;
+  const box=$("days"), rot=$("calRot"); let x0=0,y0=0,dx=0,on=false,horiz=null;
   const reduce=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
-  box.addEventListener("touchstart",e=>{ if(mode==="pennello"&&tool) return; const t=e.touches[0]; x0=t.clientX; y0=t.clientY; dx=0; on=true; horiz=null; box.style.transition="none"; },{passive:true});
+  box.addEventListener("touchstart",e=>{ if(mode==="pennello"&&tool) return; const t=e.touches[0]; x0=t.clientX; y0=t.clientY; dx=0; on=true; horiz=null; rot.style.transition="none"; },{passive:true});
   box.addEventListener("touchmove",e=>{ if(!on) return; const t=e.touches[0]; dx=t.clientX-x0; const dy=t.clientY-y0;
     if(horiz===null && (Math.abs(dx)>8||Math.abs(dy)>8)) horiz=Math.abs(dx)>Math.abs(dy);
-    if(horiz){ const r=Math.max(-75,Math.min(75,dx/box.offsetWidth*80)); box.style.transform=`rotateY(${r}deg) scale(${1-Math.abs(r)/300})`; box.style.opacity=String(1-Math.abs(r)/150); } },{passive:true});
+    if(horiz){ const r=Math.max(-75,Math.min(75,dx/box.offsetWidth*80)); rot.style.transform=`rotateY(${r}deg) scale(${1-Math.abs(r)/300})`; rot.style.opacity=String(1-Math.abs(r)/150); } },{passive:true});
   const end=()=>{ if(!on) return; on=false; const w=box.offsetWidth;
     if(horiz && Math.abs(dx)>Math.min(80,w*.2)){ lastSwipe=Date.now(); const dir=dx<0?1:-1;
-      if(reduce){ box.style.transform=""; box.style.opacity=""; cur.setMonth(cur.getMonth()+dir); render(); return; }
-      box.style.transition="transform .18s ease-in, opacity .18s"; box.style.transform=`rotateY(${-dir*90}deg) scale(.75)`; box.style.opacity="0";
-      setTimeout(()=>{ cur.setMonth(cur.getMonth()+dir); render(); box.style.transition="none"; box.style.transform=`rotateY(${dir*90}deg) scale(.75)`;
-        requestAnimationFrame(()=>requestAnimationFrame(()=>{ box.style.transition="transform .28s cubic-bezier(.2,.8,.3,1), opacity .22s"; box.style.transform="rotateY(0deg) scale(1)"; box.style.opacity="1"; })); },180);
-    } else { if(horiz) lastSwipe=Date.now(); box.style.transition="transform .22s ease-out, opacity .22s"; box.style.transform="rotateY(0deg) scale(1)"; box.style.opacity="1"; } };
+      if(reduce){ rot.style.transform=""; rot.style.opacity=""; cur.setMonth(cur.getMonth()+dir); render(); return; }
+      rot.style.transition="transform .18s ease-in, opacity .18s"; rot.style.transform=`rotateY(${-dir*90}deg) scale(.75)`; rot.style.opacity="0";
+      setTimeout(()=>{ cur.setMonth(cur.getMonth()+dir); render(); rot.style.transition="none"; rot.style.transform=`rotateY(${dir*90}deg) scale(.75)`;
+        requestAnimationFrame(()=>requestAnimationFrame(()=>{ rot.style.transition="transform .28s cubic-bezier(.2,.8,.3,1), opacity .22s"; rot.style.transform="rotateY(0deg) scale(1)"; rot.style.opacity="1"; })); },180);
+    } else { if(horiz) lastSwipe=Date.now(); rot.style.transition="transform .22s ease-out, opacity .22s"; rot.style.transform="rotateY(0deg) scale(1)"; rot.style.opacity="1"; } };
   box.addEventListener("touchend",end); box.addEventListener("touchcancel",end);
 })();
 
