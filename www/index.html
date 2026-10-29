@@ -668,10 +668,10 @@ async function initStore(){
   try{ db=await claude.use("db"); const user=await claude.use("user"); uid=user? await user.id():null; }catch(_){ db=null; }
   if(db && uid){
     const c=db.collection("data/users/"+uid);
-    store={ save:e=>c.doc(e.id).set({k:"ev",d:e.d,t:e.t,h:e.h,n:e.n,g:e.g||null,in:e.in||null}), del:id=>c.doc(id).delete(), saveSettings:s=>c.doc("settings").set({k:"settings",...s}) };
+    store={ save:e=>c.doc(e.id).set({k:"ev",d:e.d,t:e.t,h:e.h,n:e.n,g:e.g||null,in:e.in||null,out:e.out||null,hp:e.hp??null}), del:id=>c.doc(id).delete(), saveSettings:s=>c.doc("settings").set({k:"settings",...s}) };
     c.onSnapshot(snap=>{
       const ev=[]; let st=null;
-      for(const d of snap.docs){ const x=d.data()||{}; if(d.id==="settings") st=x; else if(x.k==="ev" && TYPES[x.t]) ev.push({id:d.id,d:x.d,t:x.t,h:x.h,n:x.n,g:x.g||null,in:x.in||null}); }
+      for(const d of snap.docs){ const x=d.data()||{}; if(d.id==="settings") st=x; else if(x.k==="ev" && TYPES[x.t]) ev.push({id:d.id,d:x.d,t:x.t,h:x.h,n:x.n,g:x.g||null,in:x.in||null,out:x.out||null,hp:x.hp??null}); }
       events=ev; _all=null; _fa={}; if(st){ const {k,...rest}=st; settings={...DEF,...rest}; clearFest(); }
       $("status").textContent="dati sincronizzati online"; render();
     }, err=>{ $("status").textContent="errore di sincronizzazione: "+(err?.message||err?.code||""); });
@@ -863,23 +863,34 @@ const rcDel = d => events.find(e=>e.d===d && e.t==="RC");
 const hm2m = t => { const [h,m]=String(t||"").split(":").map(Number); return h*60+(m||0); };
 const m2hm = m => `${pad(Math.floor(m/60)%24)}:${pad(Math.round(m%60))}`;
 function calcUscita(d){ const e=rcDel(d); if(!e) return null;
-  const lav=Math.round(oreGiorno(d)*60 - (+e.h||0)*60); const pres=Math.min(lav, MAXPRES);
+  const lav=Math.round(oreGiorno(d)*60 - (+(e.hp??e.h)||0)*60); const pres=Math.min(lav, MAXPRES);
   return {e, lav, pres, capped: lav>MAXPRES, uscita: e.in ? hm2m(e.in)+pres : null}; }
 function uscitaTxt(d){ const u=calcUscita(d); if(!u) return "";
   const base=`Recupero ${fh(+u.e.h)}: da fare ${fh(u.pres/60)} di presenza`;
+  if(u.e.in && u.e.out){ const r=consuntivo(d,u.e.in,u.e.out); return `Ingresso ${u.e.in} → uscita ${u.e.out}: presenza ${fh(r.pres/60)}${r.pausa?" (pausa 30 min scalata)":""} · <b>recupero ${fh(r.rec/60)}</b>`; }
   if(!u.e.in) return base+(u.capped?" (fermati a 5h55 per evitare la pausa)":"")+".";
   return `Ingresso ${u.e.in} → <b>uscita ${m2hm(u.uscita)}</b>${u.capped?" (5h55, così non scatta la pausa)":""}.`; }
+// consuntivo: da 6 ore di presenza scatta la mezz'ora di pausa, che non conta come lavoro
+function consuntivo(d,inT,outT){ const pres=Math.max(0,hm2m(outT)-hm2m(inT)); const pausa=pres>=360; const lav=pres-(pausa?30:0);
+  return {pres, pausa, lav, rec:Math.max(0, Math.round(oreGiorno(d)*60)-lav)}; }
 function renderOggiRC(){ const box=$("oggiRC"); if(!box) return; const u=calcUscita(todayIso);
-  box.innerHTML = u ? `<div class="notice" style="margin:-4px 0 14px;background:var(--surface);color:var(--fg);border:1px solid var(--line);display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap"><span><b>Oggi</b> · ${uscitaTxt(todayIso)}</span><button class="btn primary" onclick="window.__ingresso('${todayIso}')">${u.e.in?"Modifica ingresso":"Segna ingresso"}</button></div>` : ""; }
+  box.innerHTML = u ? `<div class="notice" style="margin:-4px 0 14px;background:var(--surface);color:var(--fg);border:1px solid var(--line);display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap"><span><b>Oggi</b> · ${uscitaTxt(todayIso)}</span><button class="btn primary" onclick="window.__ingresso('${todayIso}')">${u.e.out?"Modifica orari":u.e.in?"Segna uscita":"Segna ingresso"}</button></div>` : ""; }
 window.__ingresso = function(d){
   const u=calcUscita(d); if(!u) return; const now=new Date(); const def=u.e.in || `${pad(now.getHours())}:${pad(now.getMinutes())}`;
   const m=modal(`<h3>Orario di ingresso</h3><p class="msg" style="margin:0">${fmtLong(parse(d))} · recupero ${fh(+u.e.h)}</p>
-    <label class="f">Ingresso<input type="time" id="inT" value="${def}"></label><p id="inOut" style="margin:0"></p>
+    <div class="fields"><label class="f">Ingresso<input type="time" id="inT" value="${def}"></label><label class="f">Uscita effettiva (facoltativa)<input type="time" id="outT" value="${u.e.out||""}"></label></div><p id="inOut" style="margin:0"></p>
     <div class="row" style="justify-content:flex-end"><button class="btn" id="inX">Annulla</button><button class="btn primary" id="inOk">Salva</button></div>`);
-  const T=m.querySelector("#inT"), O=m.querySelector("#inOut");
-  const upd=()=>{ if(!T.value){ O.textContent=""; return; } const out=hm2m(T.value)+u.pres; O.innerHTML=`Uscita alle <b>${m2hm(out)}</b>${u.capped?" (5h55 di presenza, così non scatta la pausa)":""}. Notifica alle ${m2hm(out-15)}.`; };
-  T.oninput=upd; upd(); m.querySelector("#inX").onclick=close;
-  m.querySelector("#inOk").onclick=async()=>{ if(!T.value) return; await store.save({...u.e, in:T.value}); close();
+  const T=m.querySelector("#inT"), U=m.querySelector("#outT"), O=m.querySelector("#inOut"); const hp=+(u.e.hp??u.e.h);
+  const upd=()=>{ if(!T.value){ O.textContent=""; return; }
+    if(U.value){ if(hm2m(U.value)<=hm2m(T.value)){ O.textContent="L'uscita deve essere dopo l'ingresso."; return; }
+      const r=consuntivo(d,T.value,U.value);
+      O.innerHTML=`Presenza ${fh(r.pres/60)}${r.pausa?" · <b style=\"color:var(--warn)\">superate le 6 ore: 30 min di pausa scalati</b>":""} · lavorato ${fh(r.lav/60)}.<br>Recupero effettivo <b>${fh(r.rec/60)}</b> (previsto ${fh(hp)}${r.rec!==Math.round(hp*60)?`, ${r.rec>Math.round(hp*60)?"+":"−"}${fh(Math.abs(r.rec-Math.round(hp*60))/60)}`:""}).`; return; }
+    const out=hm2m(T.value)+u.pres; O.innerHTML=`Uscita prevista alle <b>${m2hm(out)}</b>${u.capped?" (5h55 di presenza, così non scatta la pausa)":""}. Notifica alle ${m2hm(out-15)}.`; };
+  T.oninput=upd; U.oninput=upd; upd(); m.querySelector("#inX").onclick=close;
+  m.querySelector("#inOk").onclick=async()=>{ if(!T.value) return;
+    if(U.value){ if(hm2m(U.value)<=hm2m(T.value)) return; const r=consuntivo(d,T.value,U.value);
+      await store.save({...u.e, in:T.value, out:U.value, hp, h:r.rec/60}); close(); toast(`Recupero effettivo ${fh(r.rec/60)}`); return; }
+    await store.save({...u.e, in:T.value, out:null, hp, h:hp}); close();
     await notificaUscita(d, hm2m(T.value)+u.pres); toast(`Uscita alle ${m2hm(hm2m(T.value)+u.pres)}`); };
 };
 const LN=()=> isNative() && window.Capacitor.Plugins && Capacitor.Plugins.LocalNotifications;
@@ -900,7 +911,7 @@ function planNotifiche(){ if(!LN()) return; clearTimeout(planT); planT=setTimeou
 setTimeout(()=>{ if(LN()){ try{ Capacitor.Plugins.LocalNotifications.addListener("localNotificationActionPerformed", a=>{ const d=a&&a.notification&&a.notification.extra&&a.notification.extra.d; if(d){ cur=new Date(+d.slice(0,4),+d.slice(5,7)-1,1); render(); if(a.notification.id%10===0) setTimeout(()=>window.__ingresso(d),300); } }); }catch(_){} } },0);
 
 // ---------- aggiornamenti ----------
-const APP_VER="28/10 01:39";
+const APP_VER="29/10 14:03";
 const SITE="https://claripinto.github.io/calendario-lavoro/";
 const APK_URL="https://github.com/Claripinto/calendario-lavoro/releases/latest/download/CalendarioLavoro.apk";
 const isNative=()=>!!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform());
