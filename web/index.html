@@ -913,11 +913,15 @@ function uscitaTxt(d){ const u=calcUscita(d); if(!u) return "";
 function consuntivo(d,inT,outT){ const pres=Math.max(0,hm2m(outT)-hm2m(inT)); const pausa=pres>=360; const lav=pres-(pausa?30:0);
   return {pres, pausa, lav, rec:Math.max(0, Math.round(oreGiorno(d)*60)-lav)}; }
 function renderOggiRC(){ const box=$("oggiRC"); if(!box) return; const u=calcUscita(todayIso);
-  box.innerHTML = u ? `<div class="notice" style="margin:-4px 0 14px;background:var(--surface);color:var(--fg);border:1px solid var(--line);display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap"><span><b>Oggi</b> · ${uscitaTxt(todayIso)}</span><button class="btn primary" onclick="window.__ingresso('${todayIso}')">${u.e.out?"Modifica orari":u.e.in?"Segna uscita":"Segna ingresso"}</button></div>` : ""; }
+  let chiuso=false; try{ chiuso=localStorage.getItem("cl-oggi-chiuso")===todayIso; }catch(_){}
+  if(chiuso){ box.innerHTML=""; return; }
+  box.innerHTML = (u && !u.e.out) ? `<div class="notice" style="margin:-4px 0 14px;background:var(--surface);color:var(--fg);border:1px solid var(--line);display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap"><span><b>Oggi</b> · ${uscitaTxt(todayIso)}</span><span class="row" style="gap:6px"><button class="btn ghost" onclick="window.__chiudiOggi()" aria-label="Nascondi per oggi">✕</button><button class="btn primary" onclick="window.__ingresso('${todayIso}')">${u.e.in?"Segna uscita":"Segna ingresso"}</button></span></div>` : ""; }
+window.__chiudiOggi=()=>{ try{ localStorage.setItem("cl-oggi-chiuso",todayIso); }catch(_){} $("oggiRC").innerHTML=""; };
 const _renderOggiRC=renderOggiRC;
 renderOggiRC=function(){ _renderOggiRC(); const box=$("oggiRC"); if(!box) return;
-  const e=events.find(x=>x.d===todayIso && x.t==="RCP"); if(!e) return;
-  box.insertAdjacentHTML("beforeend",`<div class="notice" style="margin:-4px 0 14px;background:var(--surface);color:var(--fg);border:1px solid var(--line);display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap"><span><b>Oggi</b> · ${straTxt(e)}</span><button class="btn primary" onclick="window.__orariStr('${e.id}')">${e.out?"Modifica orari":"Segna orari"}</button></div>`); };
+  let chiuso=false; try{ chiuso=localStorage.getItem("cl-oggi-chiuso")===todayIso; }catch(_){}
+  const e=events.find(x=>x.d===todayIso && x.t==="RCP"); if(!e || e.out || chiuso) return;
+  box.insertAdjacentHTML("beforeend",`<div class="notice" style="margin:-4px 0 14px;background:var(--surface);color:var(--fg);border:1px solid var(--line);display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap"><span><b>Oggi</b> · ${straTxt(e)}</span><span class="row" style="gap:6px"><button class="btn ghost" onclick="window.__chiudiOggi()" aria-label="Nascondi per oggi">✕</button><button class="btn primary" onclick="window.__orariStr('${e.id}')">Segna orari</button></span></div>`); };
 // straordinario: da 6 ore di presenza si toglie la mezz'ora di pausa; lo straordinario è ciò che supera l'orario del giorno
 function consStr(d,inT,outT){ const pres=Math.max(0,hm2m(outT)-hm2m(inT)); const pausa=pres>=360; const lav=pres-(pausa?30:0); const dov=Math.round(oreGiorno(d)*60);
   return {pres,pausa,lav,dov,str:Math.max(0,lav-dov)}; }
@@ -971,7 +975,7 @@ function planNotifiche(){ if(!LN()) return; clearTimeout(planT); planT=setTimeou
 setTimeout(()=>{ if(LN()){ try{ Capacitor.Plugins.LocalNotifications.addListener("localNotificationActionPerformed", a=>{ const d=a&&a.notification&&a.notification.extra&&a.notification.extra.d; if(d){ cur=new Date(+d.slice(0,4),+d.slice(5,7)-1,1); render(); if(a.notification.id%10===0) setTimeout(()=>window.__ingresso(d),300); } }); }catch(_){} } },0);
 
 // ---------- aggiornamenti ----------
-const APP_VER="30/10 17:31";
+const APP_VER="30/10 17:38";
 const SITE="https://claripinto.github.io/calendario-lavoro/";
 const APK_URL="https://github.com/Claripinto/calendario-lavoro/releases/latest/download/CalendarioLavoro.apk";
 const isNative=()=>!!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform());
