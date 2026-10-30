@@ -1,4 +1,5 @@
-<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#1d5a86"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192.png"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font-family:system-ui,sans-serif;font-size:14px}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>Calendario Lavoro Orazio</title>
+<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#1d5a86"><link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icon-192.png"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font-family:system-ui,sans-serif;font-size:14px}img{max-width:100%}[hidden]{display:none!important}</style></head><body>
+<title>Calendario Lavoro Orazio</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
@@ -554,10 +555,11 @@ function openDay(s){
   const L=allEvents().filter(e=>e.d===s); const fn=festName(s);
   const m=modal(`<h3 style="text-transform:capitalize">${fmtLong(parse(s))}</h3>
     ${fn?`<div class="notice" style="background:var(--fest-bg);color:var(--fest)">${esc(fn)}</div>`:""}
-    <div id="evList">${L.length? L.map(e=>`<div class="evrow"><span><b style="color:${col(e.t)}">${TYPES[e.t].n}</b>${TYPES[e.t].hourly?" · "+fh(+e.h):""}${e.n?`<br><span class="msg">${esc(e.n)}</span>`:""}</span><span class="row" style="flex-wrap:nowrap">${e.virtual?"":`<button class="btn" data-edit="${e.id}">Modifica</button>`}<button class="btn danger" data-del="${e.id}">${e.virtual?"Annulla SW":"Elimina"}</button></span></div>`).join("") : `<p class="msg">Nessuna assenza registrata. Giornata ${isWorking(s)?"lavorativa":"non lavorativa"}.</p>`}</div>
+    <div id="evList">${L.length? L.map(e=>`<div class="evrow"><span><b style="color:${col(e.t)}">${TYPES[e.t].n}</b>${TYPES[e.t].hourly?" · "+fh(+e.h):""}${e.n?`<br><span class="msg">${esc(e.n)}</span>`:""}</span><span class="row" style="flex-wrap:nowrap">${e.t==="RCP"?`<button class="btn" data-or="${e.id}">Orari</button>`:""}${e.virtual?"":`<button class="btn" data-edit="${e.id}">Modifica</button>`}<button class="btn danger" data-del="${e.id}">${e.virtual?"Annulla SW":"Elimina"}</button></span></div>`).join("") : `<p class="msg">Nessuna assenza registrata. Giornata ${isWorking(s)?"lavorativa":"non lavorativa"}.</p>`}</div>
     ${rcDel(s)?`<div class="notice" style="background:var(--surface2);color:var(--fg)">${uscitaTxt(s)} <button class="btn" style="padding:2px 8px;margin-left:4px" onclick="window.__ingresso('${s}')">${rcDel(s).in?"Modifica ingresso":"Segna ingresso"}</button></div>`:""}
     <div class="row" style="justify-content:flex-end"><button class="btn" id="mClose">Chiudi</button><button class="btn primary" id="mAdd" ${isWorking(s)?"":"hidden"}>+ Aggiungi in questo giorno</button></div>`);
   m.querySelector("#mClose").onclick=close; m.querySelector("#mAdd").onclick=()=>openForm(s);
+  m.querySelectorAll("[data-or]").forEach(b=>b.onclick=()=>window.__orariStr(b.dataset.or));
   m.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>openEdit(events.find(e=>e.id===b.dataset.edit)));
   m.querySelectorAll("[data-del]").forEach(b=>b.onclick=async()=>{ const id=b.dataset.del;
     if(id.startsWith("v-")){ await store.save({id:"x"+s.replace(/-/g,""),d:s,t:"SWX",h:null,n:""}); toast("Smart working annullato per questo giorno"); }
@@ -912,6 +914,27 @@ function consuntivo(d,inT,outT){ const pres=Math.max(0,hm2m(outT)-hm2m(inT)); co
   return {pres, pausa, lav, rec:Math.max(0, Math.round(oreGiorno(d)*60)-lav)}; }
 function renderOggiRC(){ const box=$("oggiRC"); if(!box) return; const u=calcUscita(todayIso);
   box.innerHTML = u ? `<div class="notice" style="margin:-4px 0 14px;background:var(--surface);color:var(--fg);border:1px solid var(--line);display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap"><span><b>Oggi</b> · ${uscitaTxt(todayIso)}</span><button class="btn primary" onclick="window.__ingresso('${todayIso}')">${u.e.out?"Modifica orari":u.e.in?"Segna uscita":"Segna ingresso"}</button></div>` : ""; }
+const _renderOggiRC=renderOggiRC;
+renderOggiRC=function(){ _renderOggiRC(); const box=$("oggiRC"); if(!box) return;
+  const e=events.find(x=>x.d===todayIso && x.t==="RCP"); if(!e) return;
+  box.insertAdjacentHTML("beforeend",`<div class="notice" style="margin:-4px 0 14px;background:var(--surface);color:var(--fg);border:1px solid var(--line);display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap"><span><b>Oggi</b> · ${straTxt(e)}</span><button class="btn primary" onclick="window.__orariStr('${e.id}')">${e.out?"Modifica orari":"Segna orari"}</button></div>`); };
+// straordinario: da 6 ore di presenza si toglie la mezz'ora di pausa; lo straordinario è ciò che supera l'orario del giorno
+function consStr(d,inT,outT){ const pres=Math.max(0,hm2m(outT)-hm2m(inT)); const pausa=pres>=360; const lav=pres-(pausa?30:0); const dov=Math.round(oreGiorno(d)*60);
+  return {pres,pausa,lav,dov,str:Math.max(0,lav-dov)}; }
+function straTxt(e){ if(e.in && e.out){ const r=consStr(e.d,e.in,e.out); return `Straordinario: ingresso ${e.in} → uscita ${e.out}, lavorato ${fh(r.lav/60)} · <b>straordinario ${fh(r.str/60)}</b>`; }
+  return `Straordinario previsto ${fh(+e.h)}. Segna gli orari per calcolarlo esatto.`; }
+window.__orariStr=function(id){ const e=events.find(x=>x.id===id); if(!e) return; const hp=+(e.hp??e.h);
+  const m=modal(`<h3>Orari straordinario</h3><p class="msg" style="margin:0">${fmtLong(parse(e.d))} · orario del giorno ${fh(oreGiorno(e.d))}${oreGiorno(e.d)>=6?" + 30 min pausa":""} · previsto ${fh(hp)}</p>
+    <div class="fields"><label class="f">Ingresso<input type="time" id="sIn" value="${e.in||"07:30"}"></label><label class="f">Uscita<input type="time" id="sOut" value="${e.out||""}"></label></div><p id="sRes" style="margin:0"></p>
+    <div class="row" style="justify-content:space-between"><button class="btn" id="sClr" ${e.out?"":"hidden"}>Torna al previsto</button><span class="row"><button class="btn" id="sX">Annulla</button><button class="btn primary" id="sOk">Salva</button></span></div>`);
+  const I=m.querySelector("#sIn"), U=m.querySelector("#sOut"), R=m.querySelector("#sRes");
+  const upd=()=>{ if(!I.value||!U.value){ R.textContent="Inserisci ingresso e uscita."; return; } if(hm2m(U.value)<=hm2m(I.value)){ R.textContent="L'uscita deve essere dopo l'ingresso."; return; }
+    const r=consStr(e.d,I.value,U.value); R.innerHTML=`Presenza ${fh(r.pres/60)}${r.pausa?" − 30 min pausa":""} = lavorato ${fh(r.lav/60)} su ${fh(r.dov/60)}.<br><b>Straordinario ${fh(r.str/60)}</b>${r.str!==Math.round(hp*60)?` (previsto ${fh(hp)})`:""}${r.str===0?" · nessuna ora oltre l'orario":""}`; };
+  I.oninput=upd; U.oninput=upd; upd(); m.querySelector("#sX").onclick=close;
+  m.querySelector("#sClr").onclick=async()=>{ await store.save({...e, in:null, out:null, h:hp, hp}); close(); toast("Ripristinato lo straordinario previsto"); };
+  m.querySelector("#sOk").onclick=async()=>{ if(!I.value||!U.value||hm2m(U.value)<=hm2m(I.value)) return; const r=consStr(e.d,I.value,U.value);
+    await store.save({...e, in:I.value, out:U.value, hp, h:r.str/60}); close(); toast(`Straordinario ${fh(r.str/60)}`); };
+};
 window.__ingresso = function(d){
   const u=calcUscita(d); if(!u) return; const now=new Date(); const def=u.e.in || `${pad(now.getHours())}:${pad(now.getMinutes())}`;
   const m=modal(`<h3>Orario di ingresso</h3><p class="msg" style="margin:0">${fmtLong(parse(d))} · recupero ${fh(+u.e.h)}</p>
@@ -948,7 +971,7 @@ function planNotifiche(){ if(!LN()) return; clearTimeout(planT); planT=setTimeou
 setTimeout(()=>{ if(LN()){ try{ Capacitor.Plugins.LocalNotifications.addListener("localNotificationActionPerformed", a=>{ const d=a&&a.notification&&a.notification.extra&&a.notification.extra.d; if(d){ cur=new Date(+d.slice(0,4),+d.slice(5,7)-1,1); render(); if(a.notification.id%10===0) setTimeout(()=>window.__ingresso(d),300); } }); }catch(_){} } },0);
 
 // ---------- aggiornamenti ----------
-const APP_VER="30/10 13:45";
+const APP_VER="30/10 17:31";
 const SITE="https://claripinto.github.io/calendario-lavoro/";
 const APK_URL="https://github.com/Claripinto/calendario-lavoro/releases/latest/download/CalendarioLavoro.apk";
 const isNative=()=>!!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform());
@@ -1204,4 +1227,5 @@ store={save:async()=>toast("Attendi il caricamento dei dati"),del:async()=>{},sa
 if(window.claude && claude.use) initStore(); else { window.claude={use:async()=>null}; initStore(); }
 })();
 </script>
+
 <script>if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js",{updateViaCache:"none"}).then(r=>r.update()).catch(()=>{});</script></body></html>
