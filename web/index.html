@@ -520,7 +520,7 @@ function buoniMese(y,m){
 window.__inviaBuoni=(y,m)=>{ const r=buoniMese(y,m);
   const testo=`Buoni pasto ${MESI[m]} ${y}: ${r.prev}`;
   const num=String(settings.waBuoni||"").replace(/[^0-9]/g,"");
-  if(!num){ toast("Imposta il numero WhatsApp in Impostazioni"); return; }
+  // senza numero si apre WhatsApp con la scelta della chat (anche i gruppi)
   const url=`https://wa.me/${num}?text=${encodeURIComponent(testo)}`;
   const B=window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.Browser;
   if(isNative() && B) B.open({url}); else { const a=document.createElement("a"); a.href=url; a.target="_blank"; a.rel="noopener"; document.body.append(a); a.click(); a.remove(); } };
@@ -621,7 +621,7 @@ function openSettings(){
   const y=cur.getFullYear();
   const m=modal(`<h3>Impostazioni <span class="msg" style="font-family:var(--f-body);font-size:.72rem;font-weight:400">${APP_VER.startsWith("__")?"":"versione "+APP_VER}</span></h3>
     <div class="row" style="justify-content:space-between;border:1px solid var(--line);border-radius:6px;padding:8px 10px" ${UPD_OK?"":"hidden"}><span class="msg" id="sUpdInfo">Aggiornamenti dell'app</span><button class="btn" type="button" id="sUpd">Controlla aggiornamenti</button></div>
-    <label class="f">WhatsApp per i buoni pasto (numero con prefisso, es. 39 333 1234567)<input type="tel" id="sWa" value="${esc(settings.waBuoni||"")}" placeholder="39…"></label>
+    <label class="f">WhatsApp per i buoni pasto: numero con prefisso (lascia vuoto per scegliere la chat o il gruppo a ogni invio)<input type="tel" id="sWa" value="${esc(settings.waBuoni||"")}" placeholder="39…"></label>
     <label class="f">Tema<select id="sTema"><option value="sistema">Come il sistema</option><option value="chiaro">Chiaro</option><option value="scuro">Scuro</option></select></label>
     <div class="fields"><label class="f">Ferie annue (gg)<input type="number" id="sFer" value="${settings.ferie}"></label><label class="f">Primo anno d'uso<input type="number" id="sStart" value="${startYear()}"></label><label class="f">Ferie residue anno prec.<input type="number" id="sAp" value="${settings.apFerie?.[startYear()]||0}"></label></div>
     <div class="fields"><label class="f">L.937 (gg)<input type="number" id="s937" value="${settings.f937}"></label><label class="f">Art. 25 (ore)<input type="number" id="sA25" value="${settings.a25}"></label><label class="f">Art. 23 (ore)<input type="number" id="sA23" value="${settings.a23}"></label></div>
@@ -987,7 +987,7 @@ function planNotifiche(){ if(!LN()) return; clearTimeout(planT); planT=setTimeou
 setTimeout(()=>{ if(LN()){ try{ Capacitor.Plugins.LocalNotifications.addListener("localNotificationActionPerformed", a=>{ const d=a&&a.notification&&a.notification.extra&&a.notification.extra.d; if(d){ cur=new Date(+d.slice(0,4),+d.slice(5,7)-1,1); render(); if(a.notification.id%10===0) setTimeout(()=>window.__ingresso(d),300); } }); }catch(_){} } },0);
 
 // ---------- aggiornamenti ----------
-const APP_VER="30/10 23:12";
+const APP_VER="30/10 23:14";
 const SITE="https://claripinto.github.io/calendario-lavoro/";
 const APK_URL="https://github.com/Claripinto/calendario-lavoro/releases/latest/download/CalendarioLavoro.apk";
 const isNative=()=>!!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform());
