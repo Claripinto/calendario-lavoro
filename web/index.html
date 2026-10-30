@@ -402,7 +402,7 @@ function ferieAlloc(Y){
   return _fa[Y]={apAvail:avail, apUsed, curUsed, apIds, expired};
 }
 const isAP = e => e.t==="FER" && ferieAlloc(+e.d.slice(0,4)).apIds.has(e.id);
-function rcSaldo(){ return (+settings.rcIniziale||0) + sum(events,"RCP") - sum(events,"RC"); }
+function rcSaldo(fino){ const E=fino?events.filter(e=>e.d<=fino):events; return (+settings.rcIniziale||0) + sum(E,"RCP") - sum(E,"RC"); }
 // ore in formato ore,minuti: "2,10" = 2 ore e 10 minuti; accetta anche 2:10 e 2.10
 function parseHM(v){ v=String(v??"").trim(); if(!v) return NaN; let neg=false; if(v[0]==="-"){ neg=true; v=v.slice(1).trim(); }
   const m=v.match(/^(\d*)(?:[.,:h](\d{0,2}))?$/); if(!m) return NaN; const h=+(m[1]||0); let mm=m[2]||""; if(mm.length===1) mm+="0"; mm=+(mm||0);
@@ -468,7 +468,10 @@ function renderBalances(y,m){
     balRow("F937","Festività soppresse L.937", sum(L,"F937"), +settings.f937, "g") +
     balRow("A25","Art. 25 motivi personali", sum(L,"A25"), +settings.a25, "h") +
     balRow("A23","Art. 23 visite mediche", sum(L,"A23"), +settings.a23, "h") +
-    `<div class="b${rc<0?" neg":""}"><span class="lbl"><i style="background:${col("RC")}"></i>Recupero compensativo</span><span class="val">${fh(rc)} <small>saldo</small></span><span class="msg" style="grid-column:1/-1;font-size:.74rem">Nel ${y}: straordinario +${fh(sum(L,"RCP"))} · recupero fruito −${fh(sum(L,"RC"))}</span></div>` +
+    (()=>{ const oggi=rcSaldo(todayIso); const futuri=events.filter(e=>e.d>todayIso);
+      return `<div class="b${oggi<0?" neg":""}"><span class="lbl"><i style="background:${col("RC")}"></i>Recupero compensativo · ad oggi</span><span class="val">${fh(oggi)} <small>saldo</small></span></div>`+
+      `<div class="b${rc<0?" neg":""}" style="margin-top:-4px"><span class="lbl" style="padding-left:14px;color:var(--muted)">Proiettato con quanto programmato</span><span class="val">${fh(rc)} <small>saldo</small></span>`+
+      `<span class="msg" style="grid-column:1/-1;font-size:.74rem">Da oggi in poi: straordinario +${fh(sum(futuri,"RCP"))} · recupero −${fh(sum(futuri,"RC"))}</span></div>`; })() +
     `<div class="b"><span class="lbl"><i style="background:${col("MAL")}"></i>Malattia nell'anno</span><span class="val">${sum(L,"MAL")} <small>gg</small></span></div>`;
   // mese
   const mk=`${y}-${pad(m+1)}`; const M=allEvents().filter(e=>e.d.startsWith(mk));
@@ -975,7 +978,7 @@ function planNotifiche(){ if(!LN()) return; clearTimeout(planT); planT=setTimeou
 setTimeout(()=>{ if(LN()){ try{ Capacitor.Plugins.LocalNotifications.addListener("localNotificationActionPerformed", a=>{ const d=a&&a.notification&&a.notification.extra&&a.notification.extra.d; if(d){ cur=new Date(+d.slice(0,4),+d.slice(5,7)-1,1); render(); if(a.notification.id%10===0) setTimeout(()=>window.__ingresso(d),300); } }); }catch(_){} } },0);
 
 // ---------- aggiornamenti ----------
-const APP_VER="30/10 17:38";
+const APP_VER="30/10 17:42";
 const SITE="https://claripinto.github.io/calendario-lavoro/";
 const APK_URL="https://github.com/Claripinto/calendario-lavoro/releases/latest/download/CalendarioLavoro.apk";
 const isNative=()=>!!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform());
