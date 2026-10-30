@@ -229,13 +229,14 @@ textarea{font-family:var(--f-mono);font-size:.75rem;min-height:180px}
     <div class="riep-grid">
       <div class="panel"><h3 id="balTitle">Saldi</h3><div class="bal" id="bal"></div></div>
       <div class="panel"><h3>Questo mese</h3><div class="bal" id="month"></div></div>
+      <div class="panel"><h3 id="bpTitle">Buoni pasto</h3><div class="bal" id="bp"></div></div>
       <div class="panel"><h3>Prossime festività</h3><div class="list" id="nextFest"></div></div>
     </div>
 
   <section class="panel tablewrap" style="padding:14px">
     <h3 style="font-family:var(--f-display);margin:0 0 8px" id="yTitle">Riepilogo annuale</h3>
     <div style="overflow-x:auto"><table id="ytab"></table></div>
-    <p class="msg">Ferie, L.937, 104, smart working e malattia in giorni; art. 25, art. 23 e recupero in ore.</p>
+    <p class="msg">Ferie, L.937, 104, smart working e malattia in giorni; art. 25, art. 23 e recupero in ore. Buoni pasto: previsti nel mese (smart working incluso).</p>
   </section>
 
   <section class="panel" style="padding:14px;margin-top:20px" id="comporto">
@@ -446,7 +447,7 @@ function render(){
     el.onclick=()=>dayTap(s); el.onkeydown=ev=>{ if(ev.key==="Enter"||ev.key===" "){ev.preventDefault();dayTap(s,true);} };
     box.append(el);
   }
-  renderBalances(y,m); renderYear(y); renderNextFest(); renderComporto(); renderOggiRC(); planNotifiche();
+  renderBalances(y,m); renderBuoni(y,m); renderYear(y); renderNextFest(); renderComporto(); renderOggiRC(); planNotifiche();
 }
 const fmtLong = d => d.toLocaleDateString("it-IT",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
 
@@ -487,14 +488,50 @@ function renderBalances(y,m){
   if(over.length) h+=`<div class="notice">Più di ${settings.sw} giorni di smart working in una settimana (${over.map(o=>"sett. "+fmt(o[0])).join(", ")}).</div>`;
   $("month").innerHTML=h;
 }
+// ---------- buoni pasto ----------
+// Regola (FAQ PERSOCIV): buono pasto se la giornata ordinaria supera le 6 ore e, uscendo prima con un permesso,
+// la presenza (lavoro effettivo + 30 min di pausa) è di almeno 6:30, cioè almeno 6 ore di lavoro al netto dei permessi. Lo smart working matura il buono.
+// Il venerdì (4 ore) dà diritto solo con almeno 3 ore di straordinario autorizzato; assenze a giornata intera (ferie, malattia, 104, ecc.) neppure.
+function buonoDi(s,evs){
+  if(!isWorking(s)) return null;
+  const og=oreGiorno(s);
+  if(evs.some(e=>FULLDAY.includes(e.t))) return {v:false, why:"ass"};
+  if(og<=6){ // venerdì (4 ore): buono solo con almeno 3 ore di straordinario autorizzato
+    const str=evs.filter(e=>e.t==="RCP").reduce((a,e)=>a+(+e.h||0),0);
+    return str>=3 ? {v:true, sw:evs.some(e=>e.t==="SW")} : {v:false, why:"ven"}; }
+  const perm=evs.filter(e=>TYPES[e.t].hourly && e.t!=="RCP").reduce((a,e)=>a+(+e.h||0),0);
+  if(og-perm<6-1e-9) return {v:false, why:"perm"}; // presenza (lavoro + 30 min pausa) almeno 6:30
+  return {v:true, sw:evs.some(e=>e.t==="SW")};
+}
+function buoniMese(y,m){
+  const mk=`${y}-${pad(m+1)}`; const byDay={};
+  for(const e of allEvents()) if(e.d.startsWith(mk)) (byDay[e.d] ||= []).push(e);
+  const r={mat:0, prev:0, uff:0, sw:0, ass:0, perm:0};
+  const dim=new Date(y,m+1,0).getDate();
+  for(let d=1; d<=dim; d++){ const s=`${mk}-${pad(d)}`; const b=buonoDi(s,byDay[s]||[]); if(!b) continue;
+    if(b.v){ r.prev++; if(s<=todayIso) r.mat++; if(b.sw) r.sw++; else r.uff++; }
+    else if(b.why==="ass") r.ass++; else if(b.why==="perm") r.perm++; }
+  return r;
+}
+function renderBuoni(y,m){
+  const r=buoniMese(y,m);
+  $("bpTitle").textContent=`Buoni pasto · ${MESI[m]}`;
+  let h=`<div class="b"><span class="lbl"><i style="background:var(--muted)"></i>Maturati</span><span class="val">${r.mat} <small>/ ${r.prev} previsti nel mese</small></span></div>`+
+    `<div class="b"><span class="lbl"><i style="background:var(--muted)"></i>In ufficio</span><span class="val">${r.uff} <small>gg</small></span></div>`+
+    `<div class="b"><span class="lbl"><i style="background:${col("SW")}"></i>Da smart working</span><span class="val">${r.sw} <small>gg</small></span></div>`;
+  if(r.ass||r.perm) h+=`<div class="b"><span class="lbl"><i style="background:${col("MAL")}"></i>Persi</span><span class="val">${r.ass+r.perm} <small>gg · ${r.ass} assenze, ${r.perm} permessi oltre 2h</small></span></div>`;
+  h+=`<span class="msg" style="font-size:.74rem">Un buono al giorno nei giorni lunedì–giovedì con almeno 6 ore di lavoro effettivo più la pausa di 30 minuti, cioè presenza di almeno 6:30 (i permessi orari non contano come lavoro: fino a 2 ore il buono resta). Il venerdì (4 ore) lo dà solo con almeno 3 ore di straordinario.</span>`;
+  $("bp").innerHTML=h;
+}
 function renderYear(y){
   $("yTitle").textContent=`Riepilogo ${y}`;
   const keys=["FER","F937","A25","A23","RC","RCP","L104","SW","MAL","ALT"];
-  let h="<thead><tr><th>Mese</th>"+keys.map(k=>`<th style="color:${col(k)}">${TYPES[k].s}</th>`).join("")+"</tr></thead><tbody>";
-  const tot={};
+  let h="<thead><tr><th>Mese</th>"+keys.map(k=>`<th style="color:${col(k)}">${TYPES[k].s}</th>`).join("")+"<th>Buoni</th></tr></thead><tbody>";
+  const tot={}; let bpT=0;
   for(let m=0;m<12;m++){ const mk=`${y}-${pad(m+1)}`; const M=allEvents().filter(e=>e.d.startsWith(mk));
-    h+=`<tr><td style="text-transform:capitalize">${MESI[m]}</td>`+keys.map(k=>{const v=sum(M,k); tot[k]=(tot[k]||0)+v; return `<td>${v? (TYPES[k].hourly?fh(v):v):"·"}</td>`;}).join("")+"</tr>"; }
-  h+="</tbody><tfoot><tr><td>Totale</td>"+keys.map(k=>`<td>${TYPES[k].hourly?fh(tot[k]):tot[k]}</td>`).join("")+"</tr></tfoot>";
+    const bpM=buoniMese(y,m); bpT+=bpM.prev;
+    h+=`<tr><td style="text-transform:capitalize">${MESI[m]}</td>`+keys.map(k=>{const v=sum(M,k); tot[k]=(tot[k]||0)+v; return `<td>${v? (TYPES[k].hourly?fh(v):v):"·"}</td>`;}).join("")+`<td>${bpM.prev||"·"}</td></tr>`; }
+  h+="</tbody><tfoot><tr><td>Totale</td>"+keys.map(k=>`<td>${TYPES[k].hourly?fh(tot[k]):tot[k]}</td>`).join("")+`<td>${bpT}</td></tr></tfoot>`;
   $("ytab").innerHTML=h;
 }
 function renderNextFest(){
@@ -911,7 +948,7 @@ function planNotifiche(){ if(!LN()) return; clearTimeout(planT); planT=setTimeou
 setTimeout(()=>{ if(LN()){ try{ Capacitor.Plugins.LocalNotifications.addListener("localNotificationActionPerformed", a=>{ const d=a&&a.notification&&a.notification.extra&&a.notification.extra.d; if(d){ cur=new Date(+d.slice(0,4),+d.slice(5,7)-1,1); render(); if(a.notification.id%10===0) setTimeout(()=>window.__ingresso(d),300); } }); }catch(_){} } },0);
 
 // ---------- aggiornamenti ----------
-const APP_VER="29/10 14:03";
+const APP_VER="30/10 13:45";
 const SITE="https://claripinto.github.io/calendario-lavoro/";
 const APK_URL="https://github.com/Claripinto/calendario-lavoro/releases/latest/download/CalendarioLavoro.apk";
 const isNative=()=>!!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform());
