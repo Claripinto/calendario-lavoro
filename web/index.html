@@ -626,6 +626,7 @@ function openSettings(){
     <div class="fields"><label class="f">Ferie annue (gg)<input type="number" id="sFer" value="${settings.ferie}"></label><label class="f">Primo anno d'uso<input type="number" id="sStart" value="${startYear()}"></label><label class="f">Ferie residue anno prec.<input type="number" id="sAp" value="${settings.apFerie?.[startYear()]||0}"></label></div>
     <div class="fields"><label class="f">L.937 (gg)<input type="number" id="s937" value="${settings.f937}"></label><label class="f">Art. 25 (ore)<input type="number" id="sA25" value="${settings.a25}"></label><label class="f">Art. 23 (ore)<input type="number" id="sA23" value="${settings.a23}"></label></div>
     <div class="fields"><label class="f">Ore giornata intera<input id="sGo" ${HMATTR} value="${fmtHM(settings.giornoOre)}"></label><label class="f">104 al mese (gg)<input type="number" id="s104" value="${settings.l104}"></label><label class="f">SW a settimana<input type="number" id="sSw" value="${settings.sw}"></label></div>
+    <div style="border:1px solid var(--line);border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:6px" ${window.__localData?"":"hidden"}><b style="font-size:.85rem">Sincronizzazione con GitHub</b><span class="msg" id="sSyncInfo"></span><button class="btn" type="button" id="sSync">Imposta sincronizzazione</button></div>
     <div class="row"><button class="btn" type="button" id="sExp">Esporta</button><button class="btn" type="button" id="sSim">Simulatore comporto</button></div>
     <div class="row" style="justify-content:space-between;border:1px solid var(--line);border-radius:6px;padding:8px 10px"><span class="msg" id="sAccInfo"></span><button class="btn" type="button" id="sAcc">Accordi smart working</button></div>
     <label class="f">Saldo iniziale recupero compensativo (ore, anche negativo)<input id="sRc" ${HMATTR} value="${fmtHM(settings.rcIniziale)}"></label>
@@ -640,6 +641,7 @@ function openSettings(){
   m.querySelector("#sRestore").onclick=()=>$("fileIn").click();
   { const a=accordoDi(todayIso); m.querySelector("#sAccInfo").textContent = a ? `In vigore: ${giorniTxt(a.giorni)} · ${a.al?"scade il "+fmt(a.al):"a tempo indeterminato"}` : "Nessun accordo in vigore"; }
   m.querySelector("#sAcc").onclick=openAccordi;
+  m.querySelector("#sSyncInfo").textContent=syncInfo(); m.querySelector("#sSync").onclick=openSync;
   m.querySelector("#sExp").onclick=()=>{ close(); openExport(); }; m.querySelector("#sSim").onclick=()=>{ close(); $("bSim").click(); };
   m.querySelector("#sUpd").onclick=()=>checkUpdates(true, m.querySelector("#sUpdInfo"));
   m.querySelector("#sTema").value=getTema(); m.querySelector("#sTema").onchange=e=>applyTema(e.target.value);
@@ -729,11 +731,14 @@ async function initStore(){
   } else {
     const KEY="calendario-lavoro-v1";
     const load=()=>{ try{ const j=JSON.parse(localStorage.getItem(KEY)||"{}"); events=j.events||[]; settings={...DEF,...(j.settings||{})}; }catch(_){} };
-    const persist=()=>{ try{ localStorage.setItem(KEY,JSON.stringify({events,settings})); }catch(_){} };
+    let tombs={}, su=0; try{ const j=JSON.parse(localStorage.getItem(KEY)||"{}"); tombs=j.tombs||{}; su=j.su||0; }catch(_){}
+    const persist=()=>{ try{ localStorage.setItem(KEY,JSON.stringify({events,settings,tombs,su})); }catch(_){} };
     load();
-    store={ save:async e=>{ events=events.filter(x=>x.id!==e.id).concat(e); persist(); render(); },
-            del:async id=>{ events=events.filter(x=>x.id!==id); persist(); render(); },
-            saveSettings:async s=>{ settings=s; clearFest(); persist(); render(); } };
+    store={ save:async e=>{ e={...e,u:Date.now()}; delete tombs[e.id]; events=events.filter(x=>x.id!==e.id).concat(e); persist(); render(); syncSoon(); },
+            del:async id=>{ tombs[id]=Date.now(); events=events.filter(x=>x.id!==id); persist(); render(); syncSoon(); },
+            saveSettings:async s=>{ settings=s; su=Date.now(); clearFest(); persist(); render(); syncSoon(); } };
+    window.__localData=()=>({events,settings,tombs,su});
+    window.__localApply=(d)=>{ events=d.events; settings={...DEF,...d.settings}; tombs=d.tombs; su=d.su; clearFest(); persist(); render(); };
     $("status").textContent="dati salvati solo in questo browser";
     render();
   }
@@ -986,8 +991,69 @@ function planNotifiche(){ if(!LN()) return; clearTimeout(planT); planT=setTimeou
   }catch(_){ } },1500); }
 setTimeout(()=>{ if(LN()){ try{ Capacitor.Plugins.LocalNotifications.addListener("localNotificationActionPerformed", a=>{ const d=a&&a.notification&&a.notification.extra&&a.notification.extra.d; if(d){ cur=new Date(+d.slice(0,4),+d.slice(5,7)-1,1); render(); if(a.notification.id%10===0) setTimeout(()=>window.__ingresso(d),300); } }); }catch(_){} } },0);
 
+// ---------- sincronizzazione con un repository GitHub privato ----------
+const SYNCK="cl-sync"; const SYNCF="dati.json";
+function syncCfg(){ try{ return JSON.parse(localStorage.getItem(SYNCK)||"null"); }catch(_){ return null; } }
+function setSyncCfg(c){ try{ if(c) localStorage.setItem(SYNCK,JSON.stringify(c)); else localStorage.removeItem(SYNCK); }catch(_){} }
+let syncState={ok:null, at:0, msg:""};
+function syncInfo(){ const c=syncCfg(); if(!c) return "Non attiva: i dati restano solo su questo dispositivo.";
+  return `Attiva su ${c.repo}${syncState.at?` · ultima sincronizzazione ${new Date(syncState.at).toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"})}`:""}${syncState.ok===false?` · errore: ${syncState.msg}`:""}`; }
+const b64e=s=>{ const by=new TextEncoder().encode(s); let bin=""; for(let i=0;i<by.length;i+=0x8000) bin+=String.fromCharCode.apply(null,by.subarray(i,i+0x8000)); return btoa(bin); };
+const b64d=s=>new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\s/g,"")),c=>c.charCodeAt(0)));
+async function gh(c,method,body){ const r=await fetch(`https://api.github.com/repos/${c.repo}/contents/${SYNCF}`+(method==="GET"?`?t=${Date.now()}`:""),{method,cache:"no-store",
+  headers:{Authorization:`Bearer ${c.token}`,Accept:"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28",...(body?{"Content-Type":"application/json"}:{})}, body:body?JSON.stringify(body):undefined});
+  return r; }
+function unisci(a,b){ // a = locale, b = remoto
+  const tombs={...(b.tombs||{})}; for(const [k,v] of Object.entries(a.tombs||{})) tombs[k]=Math.max(tombs[k]||0,v);
+  const map={}; for(const e of [...(b.events||[]),...(a.events||[])]){ const o=map[e.id]; if(!o || (e.u||0)>=(o.u||0)) map[e.id]=e; }
+  const events=Object.values(map).filter(e=>!(tombs[e.id] && tombs[e.id]>=(e.u||0)));
+  const useA=!b.settings || (a.su||0)>(b.su||0); // a parità vince quello già su GitHub
+  return {events, tombs, settings: useA?a.settings:(b.settings||a.settings), su: Math.max(a.su||0,b.su||0)}; }
+let syncing=false, syncAgain=false, syncT=null;
+function syncSoon(){ if(!syncCfg()) return; clearTimeout(syncT); syncT=setTimeout(()=>syncNow(),2500); }
+async function syncNow(manual){
+  const c=syncCfg(); if(!c || !window.__localData) return; if(syncing){ syncAgain=true; return; } syncing=true;
+  try{
+    for(let tent=0; tent<3; tent++){
+      let r=await gh(c,"GET"); let remote={events:[],tombs:{},settings:null,su:0}, sha, raw="";
+      if(r.status===200){ const j=await r.json(); sha=j.sha; raw=b64d(j.content); remote={...remote,...JSON.parse(raw)}; }
+      else if(r.status!==404) throw new Error(r.status===401?"chiave non valida o scaduta":r.status===403?"permessi insufficienti sul repository":r.status===404?"repository non trovato":"risposta "+r.status);
+      const loc=window.__localData(); const m=unisci(loc,remote);
+      const out=JSON.stringify({app:"calendario-lavoro",v:2,...m});
+      if(JSON.stringify(m.events)!==JSON.stringify(loc.events) || m.su!==loc.su || JSON.stringify(m.tombs)!==JSON.stringify(loc.tombs)) window.__localApply(m);
+      if(sha && raw===out) break; // già allineato
+      const put=await gh(c,"PUT",{message:`Aggiornamento dati ${new Date().toISOString().slice(0,16)}`, content:b64e(out), ...(sha?{sha}:{})});
+      if(put.ok) break; if(put.status===409||put.status===422) continue; throw new Error("salvataggio non riuscito ("+put.status+")");
+    }
+    syncState={ok:true, at:Date.now(), msg:""}; if(manual) toast("Dati sincronizzati");
+  }catch(e){ syncState={ok:false, at:syncState.at, msg:e.message||"errore di rete"}; if(manual) toast("Sincronizzazione non riuscita: "+syncState.msg); }
+  finally{ syncing=false; if(syncAgain){ syncAgain=false; syncSoon(); } }
+}
+function openSync(){ const c=syncCfg()||{repo:"Claripinto/calendario-dati", token:""};
+  const m=modal(`<h3>Sincronizzazione con GitHub</h3>
+    <p class="msg" style="margin:0">I dati vengono salvati nel file <b>${SYNCF}</b> del tuo repository privato e condivisi tra telefono e PC. La chiave resta solo su questo dispositivo e non finisce nei backup.</p>
+    <label class="f">Repository (utente/nome)<input type="text" id="gRepo" value="${esc(c.repo)}" autocomplete="off"></label>
+    <label class="f">Chiave personale (github_pat_…)<input type="password" id="gTok" value="${esc(c.token)}" autocomplete="off" placeholder="incolla qui la chiave"></label>
+    <p class="msg" id="gInfo" style="margin:0">${esc(syncInfo())}</p>
+    <div class="row" style="justify-content:space-between"><button class="btn danger" id="gOff" ${syncCfg()?"":"hidden"}>Disattiva</button><span class="row"><button class="btn" id="gX">Chiudi</button><button class="btn primary" id="gOk">Salva e sincronizza</button></span></div>`);
+  const q=x=>m.querySelector(x); q("#gX").onclick=close;
+  q("#gOff").onclick=()=>{ setSyncCfg(null); toast("Sincronizzazione disattivata"); close(); };
+  q("#gOk").onclick=async()=>{ const repo=q("#gRepo").value.trim(), token=q("#gTok").value.trim();
+    if(!/^[\w.-]+\/[\w.-]+$/.test(repo)){ q("#gInfo").textContent="Scrivi il repository come utente/nome."; return; }
+    if(!token){ q("#gInfo").textContent="Incolla la chiave personale."; return; }
+    q("#gOk").disabled=true; q("#gInfo").textContent="Verifico l'accesso…";
+    const t=await fetch(`https://api.github.com/repos/${repo}`,{headers:{Authorization:`Bearer ${token}`,Accept:"application/vnd.github+json"}}).catch(()=>null);
+    if(!t || !t.ok){ q("#gOk").disabled=false; q("#gInfo").textContent = !t?"Nessuna connessione.":t.status===401?"Chiave non valida.":"Repository non trovato o chiave senza accesso a questo repository."; return; }
+    const info=await t.json(); if(!info.private){ q("#gOk").disabled=false; q("#gInfo").textContent="Questo repository è pubblico: per i tuoi dati usa un repository privato."; return; }
+    setSyncCfg({repo, token}); q("#gInfo").textContent="Sincronizzo…"; await syncNow(true); q("#gInfo").textContent=syncInfo(); q("#gOk").disabled=false;
+    if(syncState.ok) setTimeout(close,800); };
+}
+window.__syncNow=syncNow; window.__store=()=>store;
+setTimeout(()=>{ if(syncCfg()) syncNow(); },1500);
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible" && syncCfg()) syncNow(); });
+
 // ---------- aggiornamenti ----------
-const APP_VER="03/11 11:39";
+const APP_VER="03/11 11:54";
 const SITE="https://claripinto.github.io/calendario-lavoro/";
 const APK_URL="https://github.com/Claripinto/calendario-lavoro/releases/latest/download/CalendarioLavoro.apk";
 const isNative=()=>!!(window.Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform());
